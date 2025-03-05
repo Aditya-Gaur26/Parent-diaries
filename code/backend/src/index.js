@@ -23,7 +23,7 @@ app.use(express.urlencoded({ extended: true }));
 
 
 app.use('/api/users',userRoutes)
-app.use('auth',authRoutes);
+app.use('/auth',authRoutes);
 
 
 

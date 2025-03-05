@@ -12,6 +12,6 @@ router.get('/', (req, res) => {
 router.get('/profile', authenticate_jwt,getUserProfile );
 router.post('/login',loginUser);
 router.post('/signup',registerUser);
-router.put('/changeProfile',authenticate_jwt,changeUserProfile);
+router.put('/profile',authenticate_jwt,changeUserProfile);
 
 export default router; 

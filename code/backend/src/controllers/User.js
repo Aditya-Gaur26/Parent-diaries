@@ -14,12 +14,10 @@ export const registerUser = async (req, res) => {
     let user = await User.findOne({ email });
     if (user) return res.status(400).json({ message: 'User already exists' });
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    
 
     // Create user
-    user = new User({ name, email, password: hashedPassword , mobile_number ,dob });
+    user = new User({ name, email, password, mobile_number ,dob });
     // save user
     await user.save();
 
@@ -85,11 +83,10 @@ export const changeUserProfile = async (req, res) => {
     try {
         const { name, email, mobile_number, dob } = req.body; // New user data from request
         // Find the user in the database
-        const user = User.findById(req.user._id).select("-password");
+        let user = await User.findById(req.user.id).select("-password");
 
         // Update user fields if provided
         if (name) user.name = name;
-        if (email) user.email = email;
         if (mobile_number) user.mobile_number = mobile_number;
         if (dob) user.dob = dob;    
 
