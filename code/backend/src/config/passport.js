@@ -25,6 +25,7 @@ passport.use(
           googleId: profile.id,
           name: profile.displayName,
           email: profile.emails && profile.emails[0].value,
+          isVerified:true
         });
         await user.save();
         return done(null, user);

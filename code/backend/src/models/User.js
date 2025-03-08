@@ -27,7 +27,13 @@ const UserSchema = new mongoose.Schema(
     mobile_number:String,
     age:Number,
     dob:Date,
-    googleid:String
+    googleid:String,
+    verificationCode: String,
+    verificationCodeExpires: Date,
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

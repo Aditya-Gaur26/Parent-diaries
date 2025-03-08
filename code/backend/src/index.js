@@ -7,6 +7,7 @@ import userRoutes from "./routes/User.js";
 import passport  from './config/passport.js';
 import authRoutes from './routes/authRoutes.js';
 
+
 const app = express();
 
 // Allow all cross-origin requests (Temporary setup) -- In permanent setup we try to allow request only from frontend ..
@@ -24,6 +25,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/users',userRoutes)
 app.use('/auth',authRoutes);
+app.use('/sentiment_analysis',sentimentAnalysisRoutes);
 
 
 
