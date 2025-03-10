@@ -15,47 +15,28 @@ import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 
-// Custom simplified wave animation without problematic easing functions
-const SiriWaveView = ({ isActive, amplitude = 0 }: { isActive: boolean; amplitude: number }) => {
-  // Create 12 bars for a smooth wave effect
-  const numBars = 12;
-  const animations = [...Array(numBars)].map(() => useRef(new Animated.Value(0)).current);
-  const [colors] = useState<string[]>(Array(numBars).fill('#4287f5'));
+// Custom AudioWave component
+const AudioWaveView = ({ isActive, amplitude = 0 }: { isActive: boolean; amplitude: number }) => {
+  const animations = [...Array(5)].map(() => useRef(new Animated.Value(0)).current);
   
   useEffect(() => {
     let animationSubscriptions: any[] = [];
     
     if (isActive) {
-      // Create fluid wave effect with varying heights and timing
+      // Animate each bar with different durations for a wave effect
       animations.forEach((anim, index) => {
         const createAnimation = () => {
-          // Calculate bar position from center (0-1)
-          const distanceFromCenter = Math.abs((index - (numBars - 1) / 2) / ((numBars - 1) / 2));
-          
-          // Generate values for natural movement
-          const baseAmplitude = Math.max(0.2, amplitude);
-          const randomFactor = 0.7 + Math.random() * 0.3;
-          const positionFactor = 1 - (distanceFromCenter * 0.5);
-          
-          // Calculate heights
-          const maxHeight = baseAmplitude * randomFactor * positionFactor;
-          const minHeight = maxHeight * 0.3 * randomFactor;
-          
-          // Durations
-          const upDuration = 600 + (index * 30) + Math.random() * 200;
-          const downDuration = 700 + (index * 30) + Math.random() * 200;
+          const duration = 600 + (index * 100); // Vary duration for each bar
           
           const animationSequence = Animated.sequence([
             Animated.timing(anim, {
-              toValue: maxHeight,
-              duration: upDuration,
-              // Remove problematic easing function
+              toValue: amplitude * (0.3 + (index * 0.15)), // Vary height based on index and amplitude
+              duration: duration,
               useNativeDriver: false,
             }),
             Animated.timing(anim, {
-              toValue: minHeight,
-              duration: downDuration,
-              // Remove problematic easing function
+              toValue: amplitude * 0.1,
+              duration: duration,
               useNativeDriver: false,
             })
           ]);
@@ -69,16 +50,14 @@ const SiriWaveView = ({ isActive, amplitude = 0 }: { isActive: boolean; amplitud
           animationSubscriptions.push(subscription);
         };
         
-        // Stagger animation starts
-        setTimeout(() => createAnimation(), index * 50);
+        createAnimation();
       });
     } else {
-      // Reset animations when inactive
-      animations.forEach((anim) => {
+      // Reset animations when not active
+      animations.forEach(anim => {
         const subscription = Animated.timing(anim, {
           toValue: 0,
-          duration: 500,
-          // Remove problematic easing function
+          duration: 300,
           useNativeDriver: false,
         }).start();
         animationSubscriptions.push(subscription);
@@ -86,7 +65,7 @@ const SiriWaveView = ({ isActive, amplitude = 0 }: { isActive: boolean; amplitud
     }
     
     return () => {
-      // Clean up animations
+      // Clean up all animations
       animations.forEach(anim => anim.stopAnimation());
       animationSubscriptions.forEach(subscription => {
         if (subscription && subscription.stop) {
@@ -94,23 +73,22 @@ const SiriWaveView = ({ isActive, amplitude = 0 }: { isActive: boolean; amplitud
         }
       });
     };
-  }, [isActive, amplitude, animations]);
+  }, [isActive, amplitude]);
 
   return (
-    <View style={styles.siriWaveContainer}>
+    <View style={styles.waveContainer}>
       {animations.map((anim, index) => (
         <Animated.View
           key={index}
           style={[
-            styles.siriWaveLine,
+            styles.waveLine,
             {
               height: anim.interpolate({
                 inputRange: [0, 1],
-                outputRange: [3, 60],
+                outputRange: [5, 50],
               }),
-              backgroundColor: colors[index],
-              width: 4 + Math.abs(index - (numBars - 1) / 2) * 0.4,
-              marginHorizontal: 3,
+              backgroundColor: '#4287f5',
+              marginHorizontal: 5,
             }
           ]}
         />
@@ -157,10 +135,11 @@ const AudioRecorderScreen = () => {
           staysActiveInBackground: true,
         });
         
-        // Fix permissions check to avoid TypeError
+        // Remove the unavailable getAvailableInputs function
+        // Instead check device capabilities a different way
         try {
-          const permissionResponse = await Audio.getPermissionsAsync();
-          addDebugInfo(`Audio permission status: ${permissionResponse.status}`);
+          const { recording: recordingPermission } = await Audio.getPermissionsAsync();
+          addDebugInfo(`Recording permission status: ${recordingPermission.status}`);
           
           // Add device info for debugging
           addDebugInfo(`Device: ${Platform.OS} ${Platform.Version}`);
@@ -345,13 +324,9 @@ const AudioRecorderScreen = () => {
         // Check if file exists and get size
         try {
           const fileInfo = await FileSystem.getInfoAsync(uri);
-          if (fileInfo.exists) {
-            addDebugInfo(`File exists: ${fileInfo.exists}, Size: ${fileInfo.size} bytes`);
-          } else {
-            addDebugInfo(`File does not exist`);
-          }
+          addDebugInfo(`File exists: ${fileInfo.exists}, Size: ${fileInfo.size} bytes`);
           
-          if (fileInfo.exists && fileInfo.size < 1000) {
+          if (fileInfo.size < 1000) {
             addDebugInfo("WARNING: File size is very small, may not contain audio");
           }
         } catch (e) {
@@ -481,11 +456,11 @@ const AudioRecorderScreen = () => {
           {recordingStatus}
         </Text>
         
-        {/* Wave visualization */}
+        {/* AudioWaveView */}
         <View style={styles.waveContainer}>
-          <SiriWaveView 
-            isActive={isRecording || isPlaying} 
-            amplitude={audioLevel}
+          <AudioWaveView 
+            isActive={isRecording} 
+            amplitude={audioLevel} 
           />
         </View>
         
@@ -638,18 +613,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#666',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  siriWaveContainer: {
-    width: 280,
-    height: 120,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  siriWaveLine: {
-    borderRadius: 50,
-  },
+  }
 });
 
 export default AudioRecorderScreen;
