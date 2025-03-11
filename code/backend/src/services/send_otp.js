@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+import nodemailer from "nodemailer"
 
 let transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
@@ -11,7 +11,7 @@ let transporter = nodemailer.createTransport({
 });
 
 // Function to send OTP email with enhanced styling
-function sendOTP(email, code) {
+export const sendOtp = function sendOTP(email, code) {
     return new Promise((resolve, reject) => {
         let mailOptions = {
             from: process.env.SMTP_MAIL,
@@ -54,4 +54,3 @@ The Wave Diaries Team`,
     });
 }
 
-module.exports.sendOtp = sendOTP;
