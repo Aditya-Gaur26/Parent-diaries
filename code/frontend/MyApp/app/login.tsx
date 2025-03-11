@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Image, Alert, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+
+const API_URL = 'http://10.1.128.96:4444/api/users';// Replace with your actual API URL
 
 const LoginScreen = () => {
   const router = useRouter();
@@ -11,6 +15,25 @@ const LoginScreen = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Check for existing authentication on component mount
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (token) {
+        router.replace('/homeScreen');
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    } finally {
+      setIsCheckingAuth(false);
+    }
+  };
 
   const validateInput = () => {
     let isValid = true;
@@ -28,20 +51,23 @@ const LoginScreen = () => {
     
     setIsLoading(true);
     try {
-      // Simulating API call with timeout
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      // First check hardcoded credentials
       if (email === 'Aditya' && password === 'waveDEEPdiaries') {
+        await AsyncStorage.setItem('authToken', 'hardcoded-token');
+        await AsyncStorage.setItem('userData', JSON.stringify({ username: 'Aditya' }));
         router.replace('/homeScreen');
-      } else {
-        Alert.alert(
-          'Login Failed',
-          'Invalid username or password',
-          [{ text: 'Try Again', style: 'cancel' }]
-        );
+        return;
       }
+
+      // If not hardcoded user, try API login
+      const response = await axios.post(`${API_URL}/login`, { email, password });
+      const { token, user } = response.data;
+
+      await AsyncStorage.setItem('authToken', token);
+      await AsyncStorage.setItem('userData', JSON.stringify(user));
+      router.replace('/homeScreen');
     } catch (error) {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      Alert.alert('Login Failed', 'Invalid username or password');
     } finally {
       setIsLoading(false);
     }

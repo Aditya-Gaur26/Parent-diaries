@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, Image, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import axios from 'axios';
+
+const API_URL = 'http://10.1.128.96:4444/api/users';
 
 const CreateAccountScreen = () => {
   const router = useRouter();
@@ -15,6 +18,7 @@ const CreateAccountScreen = () => {
     password: '',
     confirmPassword: ''
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   const validateForm = () => {
     let isValid = true;
@@ -43,12 +47,32 @@ const CreateAccountScreen = () => {
     return isValid;
   };
 
-  const handleCreateAccount = () => {
-    if (validateForm()) {
+  const handleCreateAccount = async () => {
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    try {
+      console.log("hi");
+      const response = await axios.post(`${API_URL}/signup`, {
+        email,
+        password
+      });
+      
       router.push({
         pathname: '/email-verification',
         params: { email }
       });
+      
+    } catch (error: any) {
+      console.log(error)
+        
+      const errorMessage = error.response?.data?.message || 'Signup failed. Please try again.';
+      setErrors(prev => ({
+        ...prev,
+        email: errorMessage
+      }));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -118,10 +142,15 @@ const CreateAccountScreen = () => {
           {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
           
           <TouchableOpacity 
-            style={styles.createButton}
+            style={[styles.createButton, isLoading && { opacity: 0.7 }]}
             onPress={handleCreateAccount}
+            disabled={isLoading}
           >
-            <Text style={styles.createButtonText}>Create account</Text>
+            {isLoading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.createButtonText}>Create account</Text>
+            )}
           </TouchableOpacity>
           
           <Text style={styles.termsText}>

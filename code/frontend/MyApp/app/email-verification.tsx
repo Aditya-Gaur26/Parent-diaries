@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const API_URL = 'http://10.1.128.96:4444/api/users';
 
 const EmailVerificationScreen = () => {
   const router = useRouter();
@@ -9,6 +13,7 @@ const EmailVerificationScreen = () => {
   const [code, setCode] = useState(['', '', '', '', '']);
   const [timer, setTimer] = useState(20); // Changed to 20 seconds like the reference
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isVerifying, setIsVerifying] = useState(false);
   
   const email = params?.email ? String(params.email) : 'your email';
 
@@ -59,18 +64,46 @@ const EmailVerificationScreen = () => {
     }
   };
 
-  const handleResendCode = () => {
+  const handleResendCode = async () => {
     setCode(['', '', '', '', '']);
     setActiveIndex(0);
     setTimer(20);
-    // Add your API call to resend code here
+    
+    try {
+      await axios.post(`${API_URL}/resend-code`, { email });
+    } catch (error) {
+      Alert.alert('Error', 'Failed to resend verification code');
+    }
   };
 
-  const handleSubmit = () => {
-    if (code.join('').length === 5) {
-      router.push('/homeScreen');
-    } else {
-      alert('Please enter the complete verification code.');
+  const handleSubmit = async () => {
+    if (code.join('').length !== 5) {
+      Alert.alert('Error', 'Please enter the complete verification code.');
+      return;
+    }
+
+    setIsVerifying(true);
+    console.log("hi");
+    try {
+      const verificationCode = code.join('');
+      const response = await axios.post(`${API_URL}/verify_email`, {
+        email,
+        verificationCode
+      });
+
+      const { token } = response.data;
+      
+      // Store JWT token
+      await AsyncStorage.setItem('authToken', token);
+      
+      // Navigate to complete registration without passing email parameter
+      router.replace('/complete-registration');
+    } catch (error: any) {
+      console.log(error)
+      const errorMessage = error.response?.data?.message || 'Verification failed. Please try again.';
+      Alert.alert('Verification Failed', errorMessage);
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -121,10 +154,15 @@ const EmailVerificationScreen = () => {
         </TouchableOpacity>
         
         <TouchableOpacity 
-          style={styles.submitButton}
+          style={[styles.submitButton, isVerifying && { opacity: 0.7 }]}
           onPress={handleSubmit}
+          disabled={isVerifying}
         >
-          <Text style={styles.submitButtonText}>Submit</Text>
+          {isVerifying ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.submitButtonText}>Submit</Text>
+          )}
         </TouchableOpacity>
       </View>
       
