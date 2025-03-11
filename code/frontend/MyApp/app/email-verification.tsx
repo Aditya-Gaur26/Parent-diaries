@@ -4,8 +4,7 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const API_URL = 'http://10.1.128.96:4444/api/users';
+import { API_URL,AUTH_URL } from '../config/environment';
 
 const EmailVerificationScreen = () => {
   const router = useRouter();
@@ -70,7 +69,7 @@ const EmailVerificationScreen = () => {
     setTimer(20);
     
     try {
-      await axios.post(`${API_URL}/resend-code`, { email });
+      await axios.post(`${API_URL}/users/resend-code`, { email });
     } catch (error) {
       Alert.alert('Error', 'Failed to resend verification code');
     }
@@ -86,7 +85,7 @@ const EmailVerificationScreen = () => {
     console.log("hi");
     try {
       const verificationCode = code.join('');
-      const response = await axios.post(`${API_URL}/verify_email`, {
+      const response = await axios.post(`${API_URL}/users/verify_email`, {
         email,
         verificationCode
       });

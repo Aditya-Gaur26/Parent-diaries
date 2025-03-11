@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, Image, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import axios from 'axios';
+import { API_URL,AUTH_URL } from '../config/environment';
 
-const API_URL = 'http://10.1.128.96:4444/api/users';
 
 const CreateAccountScreen = () => {
   const router = useRouter();
@@ -19,6 +20,25 @@ const CreateAccountScreen = () => {
     confirmPassword: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (token) {
+        router.replace('/homeScreen');
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    } finally {
+      setIsCheckingAuth(false);
+    }
+  };
 
   const validateForm = () => {
     let isValid = true;
@@ -53,7 +73,7 @@ const CreateAccountScreen = () => {
     setIsLoading(true);
     try {
       console.log("hi");
-      const response = await axios.post(`${API_URL}/signup`, {
+      const response = await axios.post(`${API_URL}/users/signup`, {
         email,
         password
       });

@@ -5,12 +5,12 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "wavediaries",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.myapp.voicechat",
+      "bundleIdentifier": "com.yourcompany.wavediaries",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app needs access to your microphone for voice recognition",
         "NSSpeechRecognitionUsageDescription": "This app uses speech recognition to convert your speech to text"
@@ -24,7 +24,16 @@
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.myapp.voicechat"
+      "package": "com.myapp.voicechat",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": {
+            "scheme": "wavediaries"
+          },
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",

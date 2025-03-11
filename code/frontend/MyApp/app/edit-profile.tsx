@@ -1,46 +1,170 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Image, 
-  SafeAreaView, 
-  ScrollView
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, ScrollView, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { API_URL } from '../config/environment';
 
 const EditProfileScreen = () => {
   const router = useRouter();
-  const [profileData, setProfileData] = useState({
-    name: 'Melissa Peters',
-    email: 'mspeters@gmail.com',
-    password: '••••••••••••',
-    dateOfBirth: '23/05/1995',
-    countryRegion: 'Nigeria'
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFormModified, setIsFormModified] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  type ProfileDataType = {
+    name: string;
+    email: string;
+    mobile_number: string;
+    dob: string;
+    age: string;  // Changed from countryRegion to age
+  };
+  
+  const [originalData, setOriginalData] = useState<ProfileDataType | null>(null);
+  const [profileData, setProfileData] = useState<ProfileDataType>({
+    name: '',
+    email: '',
+    mobile_number: '',
+    dob: '',
+    age: ''  // Changed from countryRegion to age
   });
 
-  const handleSaveChanges = () => {
-    // Implement save functionality here
-    console.log('Saving profile data:', profileData);
-    router.back();
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const userDataString = await AsyncStorage.getItem('userData');
+      if (userDataString) {
+        const userData = JSON.parse(userDataString);
+        console.log('Loading user data:', userData); // Debug log
+        
+        const formattedData = {
+          name: userData.name || '',
+          email: userData.email || '',
+          mobile_number: userData.mobile_number || '',
+          dob: '',
+          // Convert age to string before assigning (it's a number in the response)
+          age: userData.age ? userData.age.toString() : ''
+        };
+        
+        if (userData.dob) {
+          const isoDate = new Date(userData.dob);
+          const dd = isoDate.getDate().toString().padStart(2, '0');
+          const mm = (isoDate.getMonth() + 1).toString().padStart(2, '0');
+          const yyyy = isoDate.getFullYear().toString();
+          formattedData.dob = `${dd}/${mm}/${yyyy}`;
+        }
+        
+        console.log('Formatted user data:', formattedData); // Debug log
+        setProfileData(formattedData);
+        setOriginalData(formattedData);
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      Alert.alert('Error', 'Failed to load profile data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const validateDateFormat = (date: string): boolean => {
+    // Check if date matches DD/MM/YYYY format
+    const regex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[012])\/(19|20)\d\d$/;
+    if (!regex.test(date)) return false;
+
+    // Check if date is valid
+    const [day, month, year] = date.split('/').map(Number);
+    const dateObj = new Date(year, month - 1, day);
+    return dateObj.getDate() === day &&
+           dateObj.getMonth() === month - 1 &&
+           dateObj.getFullYear() === year;
+  };
+
+  const handleInputChange = (field: string, value: any) => {
+    if (field === 'dob') {
+      // Allow only numbers and forward slash
+      value = value.replace(/[^\d/]/g, '');
+      
+      // Automatically add slashes
+      if (value.length === 2 || value.length === 5) {
+        if (value.charAt(value.length - 1) !== '/') {
+          value = value + '/';
+        }
+      }
+      
+      // Limit the length to 10 characters (DD/MM/YYYY)
+      if (value.length > 10) {
+        return;
+      }
+    }
+
+    setProfileData(prev => {
+      const newData = { ...prev, [field]: value };
+      setIsFormModified(JSON.stringify(newData) !== JSON.stringify(originalData));
+      return newData;
+    });
+  };
+
+  const handleSaveChanges = async () => {
+    try {
+      if (!profileData.name || profileData.name === 'Enter your name') {
+        Alert.alert('Error', 'Please enter your name');
+        return;
+      }
+
+      if (!profileData.email || profileData.email === 'Enter your email') {
+        Alert.alert('Error', 'Please enter your email');
+        return;
+      }
+
+      if (profileData.dob && !validateDateFormat(profileData.dob)) {
+        Alert.alert('Error', 'Please enter date in DD/MM/YYYY format');
+        return;
+      }
+
+      setIsLoading(true);
+      const token = await AsyncStorage.getItem('authToken');
+      
+      const dataToSend = {
+        ...profileData,
+        dob: profileData.dob,
+      };
+
+      const response = await axios.put(
+        `${API_URL}/users/profile`,
+        dataToSend,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      await AsyncStorage.setItem('userData', JSON.stringify(response.data.user));
+      Alert.alert('Success', 'Profile updated successfully');
+      
+      router.back();
+    } catch (error) {
+      console.error('Save error:', error);
+      Alert.alert('Error', 'Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* Header with back button */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={24} color="black" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Profile</Text>
-          <View style={{ width: 24 }} /> {/* Empty view for centering */}
+          <View style={{ width: 24 }} />
         </View>
 
-        {/* Profile Image */}
         <View style={styles.profileImageContainer}>
           <Image
             source={{ uri: 'https://randomuser.me/api/portraits/women/44.jpg' }}
@@ -51,63 +175,71 @@ const EditProfileScreen = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Form Fields */}
         <View style={styles.formContainer}>
-          {/* Name Field */}
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>Name</Text>
             <TextInput
               style={styles.input}
               value={profileData.name}
-              onChangeText={(text) => setProfileData({...profileData, name: text})}
+              onChangeText={(text) => handleInputChange('name', text)}
+              placeholder="Enter your name"
+              placeholderTextColor="#999"
             />
           </View>
 
-          {/* Email Field */}
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>Email</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, styles.readOnlyInput]}
               value={profileData.email}
-              keyboardType="email-address"
-              onChangeText={(text) => setProfileData({...profileData, email: text})}
+              editable={false}
+              placeholder="Email cannot be changed"
+              placeholderTextColor="#999"
             />
           </View>
 
-          {/* Password Field */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Password</Text>
+            <Text style={styles.fieldLabel}>Mobile Number</Text>
             <TextInput
               style={styles.input}
-              value={profileData.password}
-              secureTextEntry={true}
-              onChangeText={(text) => setProfileData({...profileData, password: text})}
+              value={profileData.mobile_number}
+              keyboardType="phone-pad"
+              onChangeText={(text) => handleInputChange('mobile_number', text)}
+              placeholder="Enter mobile number"
+              placeholderTextColor="#999"
             />
           </View>
 
-          {/* Date of Birth Field */}
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>Date of Birth</Text>
-            <TouchableOpacity style={styles.dropdownInput}>
-              <Text>{profileData.dateOfBirth}</Text>
-              <Ionicons name="chevron-down" size={20} color="black" />
-            </TouchableOpacity>
+            <TextInput
+              style={styles.input}
+              value={profileData.dob}
+              onChangeText={(text) => handleInputChange('dob', text)}
+              placeholder="DD/MM/YYYY"
+              placeholderTextColor="#999"
+              maxLength={10}
+              keyboardType="numeric"
+            />
           </View>
 
-          {/* Country/Region Field */}
+          {/* Age Field (replaces Country/Region) */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Country/Region</Text>
-            <TouchableOpacity style={styles.dropdownInput}>
-              <Text>{profileData.countryRegion}</Text>
-              <Ionicons name="chevron-down" size={20} color="black" />
-            </TouchableOpacity>
+            <Text style={styles.fieldLabel}>Age</Text>
+            <TextInput
+              style={[styles.input, styles.readOnlyInput]}
+              value={profileData.age}
+              editable={false}
+              placeholder="Age "
+              placeholderTextColor="#999"
+            />
           </View>
         </View>
 
-        {/* Save Button */}
         <TouchableOpacity 
-          style={styles.saveButton}
+          style={[styles.saveButton, !isFormModified && styles.saveButtonDisabled]}
           onPress={handleSaveChanges}
+          disabled={!isFormModified}
         >
           <Text style={styles.saveButtonText}>Save changes</Text>
         </TouchableOpacity>
@@ -201,6 +333,13 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#CCCCCC',
+  },
+  readOnlyInput: {
+    backgroundColor: '#f5f5f5',
+    color: '#666',
   },
 });
 

@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Image, Alert, ActivityIndicator, Linking } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import * as WebBrowser from 'expo-web-browser';
+import { API_URL,AUTH_URL } from '../config/environment';
 
-const API_URL = 'http://10.1.128.96:4444/api/users';// Replace with your actual API URL
+// Register for OAuth redirect handling
+WebBrowser.maybeCompleteAuthSession();
 
 const LoginScreen = () => {
   const router = useRouter();
@@ -60,7 +63,7 @@ const LoginScreen = () => {
       }
 
       // If not hardcoded user, try API login
-      const response = await axios.post(`${API_URL}/login`, { email, password });
+      const response = await axios.post(`${API_URL}/users/login`, { email, password });
       const { token, user } = response.data;
 
       await AsyncStorage.setItem('authToken', token);
@@ -68,6 +71,45 @@ const LoginScreen = () => {
       router.replace('/homeScreen');
     } catch (error) {
       Alert.alert('Login Failed', 'Invalid username or password');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      setIsLoading(true);
+      console.log('Starting Google login...');
+      
+      // Open browser for Google authentication
+      const result = await WebBrowser.openAuthSessionAsync(
+        `${AUTH_URL}/google`,
+        'wavediaries://'
+      );
+      
+      console.log('Auth result type:', result.type);
+      
+      // Handle the result
+      if (result.type === 'success') {
+        const url = result.url;
+        console.log('Success URL:', url);
+        
+        if (url.includes('token=')) {
+          const token = url.split('token=')[1].split('&')[0];
+          console.log('Token received');
+          await AsyncStorage.setItem('authToken', token);
+          router.replace('/homeScreen');
+        } else if (url.includes('error=')) {
+          const error = decodeURIComponent(url.split('error=')[1].split('&')[0]);
+          console.error('Auth error:', error);
+          Alert.alert('Login Failed', error);
+        }
+      } else {
+        console.log('Auth cancelled or failed');
+      }
+    } catch (error) {
+      console.error('Google login error:', error);
+      Alert.alert('Login Failed', 'An error occurred during Google authentication.');
     } finally {
       setIsLoading(false);
     }
@@ -153,7 +195,7 @@ const LoginScreen = () => {
             <View style={styles.divider} />
           </View>
           
-          <TouchableOpacity style={styles.googleButton}>
+          <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
             <Image 
               source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }} 
               style={styles.googleIcon} 
