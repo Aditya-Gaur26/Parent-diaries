@@ -5,6 +5,8 @@ import multer from "multer";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { audio_transcription, test_asr_endpoint } from "../controllers/asr";
+import authenticate_jwt from "../middlewares/authenticate_jwt";
 
 // Get the directory name
 const __filename = fileURLToPath(import.meta.url);
@@ -51,52 +53,9 @@ const upload = multer({
 });
 
 // POST endpoint for audio transcription
-router.post("/", upload.single('audio'), async (req, res) => {
-  try {
-    console.log("Request received with file");
-    if (!req.file) {
-      return res.status(400).json({ error: "No audio file uploaded" });
-    }
-
-    console.log("File received, path:", req.file.path);
-
-    console.log("Calling OpenAI API...");
-    const startTime = Date.now();
-
-    // Use createReadStream with the file path
-    const transcription = await openai.audio.transcriptions.create({
-      file: fs.createReadStream(req.file.path),
-      model: "whisper-1",
-    });
-
-    // Clean up the temporary file
-    fs.unlinkSync(req.file.path);
-
-    const endTime = Date.now();
-    console.log(`OpenAI API call completed in ${endTime - startTime}ms`);
-
-    return res.json({
-      transcription: transcription.text
-    });
-  } catch (error) {
-    console.error("Error transcribing audio:", error);
-
-    // Make sure to clean up the file even if there's an error
-    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch (unlinkError) {
-        console.error("Error deleting temporary file:", unlinkError);
-      }
-    }
-
-    return res.status(500).json({ error: "An error occurred while transcribing the audio", details: error.message });
-  }
-});
+router.post("/", authenticate_jwt ,upload.single('audio'), audio_transcription);
 
 // GET endpoint for testing
-router.get("/test", (req, res) => {
-  res.json({ message: "ASR API is working" });
-});
+router.get("/test", test_asr_endpoint);
 
 export default router;

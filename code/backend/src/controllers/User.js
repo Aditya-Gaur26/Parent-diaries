@@ -57,11 +57,13 @@ export const loginUser = async (req, res) => {
 
     // Compare password
     const isMatch = await user.matchPassword(password);
+    console.log(isMatch)
  
     if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
     
     // Generate JWT token
     const token = user.generateToken();
+    console.log(token);
 
     res.status(200).json({ message: 'Login successful', token });
   } catch (error) {
