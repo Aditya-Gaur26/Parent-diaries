@@ -20,6 +20,8 @@ const authenticate_jwt = async (req, res, next) => {
             return res.status(401).json({ message: "User not found" });
         }
 
+        req.authToken = token;
+
         next();
     } catch (err) {
         return res.status(401).json({ message: "Invalid token", error: err.message });

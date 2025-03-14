@@ -29,6 +29,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/users',userRoutes)
 app.use('/auth',authRoutes);
 app.use('/sentiment_analysis',sentimentAnalysisRoutes);
+app.use('/asr',asr);
+app.use('/llm',llm);
+app.use('/tts',tts);
+app.use('/speech2speech',speech2speech);
 
 
 

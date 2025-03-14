@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import axios from "axios";
 import dotenv from "dotenv";
 import FormData from "form-data";
+import authenticate_jwt from "../middlewares/authenticate_jwt";
 
 // Get the directory name
 const __filename = fileURLToPath(import.meta.url);
@@ -50,7 +51,7 @@ const upload = multer({
 });
 
 // Helper function to transcribe audio using ASR service
-const transcribeAudio = async (audioPath) => {
+const transcribeAudio = async (audioPath, authToken) => {
   console.log(`Transcribing audio: ${audioPath}`);
 
   try {
@@ -58,9 +59,12 @@ const transcribeAudio = async (audioPath) => {
     const formData = new FormData();
     formData.append('audio', fs.createReadStream(audioPath));
 
-    // Make request to local ASR endpoint
-    const response = await axios.post('http://localhost:5000/asr', formData, {
-      headers: formData.getHeaders()
+    // Make request to local ASR endpoint with authorization header
+    const response = await axios.post(`${process.env.NGROK_BASE_URL}/asr`, formData, {
+      headers: {
+        ...formData.getHeaders(),
+        'Authorization': `Bearer ${authToken}`
+      }
     });
 
     return response.data.transcription;
@@ -70,13 +74,17 @@ const transcribeAudio = async (audioPath) => {
   }
 };
 
-// Helper function to generate text response using LLM service
-const generateResponse = async (transcription) => {
+// Helper function to generate response using LLM service
+const generateResponse = async (transcription, authToken) => {
   console.log(`Generating response for transcription: ${transcription.substring(0, 50)}...`);
 
   try {
-    const response = await axios.post('http://localhost:5000/chat', {
+    const response = await axios.post(`${process.env.NGROK_BASE_URL}/chat`, {
       message: transcription
+    }, {
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      }
     });
 
     return response.data.response;
@@ -87,14 +95,17 @@ const generateResponse = async (transcription) => {
 };
 
 // Helper function to convert text to speech using TTS service
-const textToSpeech = async (text, voice) => {
+const textToSpeech = async (text, voice, authToken) => {
   console.log(`Converting text to speech with voice: ${voice}`);
 
   try {
-    const response = await axios.post('http://localhost:5000/tts', {
+    const response = await axios.post(`${process.env.NGROK_BASE_URL}/tts`, {
       text,
       voice
     }, {
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      },
       responseType: 'arraybuffer'
     });
 
@@ -106,10 +117,10 @@ const textToSpeech = async (text, voice) => {
 };
 
 // Main endpoint for speech-to-speech conversion
-router.post("/", upload.single('audio'), async (req, res) => {
+router.post("/", authenticate_jwt, upload.single('audio'), async (req, res) => {
   try {
     console.log("Speech-to-speech request received");
-
+    const authToken = req.authToken;
     if (!req.file) {
       return res.status(400).json({ error: "No audio file uploaded" });
     }
@@ -120,15 +131,15 @@ router.post("/", upload.single('audio'), async (req, res) => {
     console.log(`Processing file: ${req.file.path} with voice: ${voice}`);
 
     // Step 1: Transcribe the audio file
-    const transcription = await transcribeAudio(req.file.path);
+    const transcription = await transcribeAudio(req.file.path,authToken);
     console.log("Transcription:", transcription.substring(0, 100) + "...");
 
     // Step 2: Send transcription to LLM
-    const llmResponse = await generateResponse(transcription);
+    const llmResponse = await generateResponse(transcription,authToken);
     console.log("LLM response:", llmResponse.substring(0, 100) + "...");
 
     // Step 3: Convert LLM response to speech
-    const audioBuffer = await textToSpeech(llmResponse, voice);
+    const audioBuffer = await textToSpeech(llmResponse, voice,authToken);
 
     // Clean up the original uploaded file
     try {
