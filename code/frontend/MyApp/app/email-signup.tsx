@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import React, { useState,useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, Image, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import axios from 'axios';
+import { API_URL,AUTH_URL } from '../config/environment';
+
 
 const CreateAccountScreen = () => {
   const router = useRouter();
@@ -15,6 +19,26 @@ const CreateAccountScreen = () => {
     password: '',
     confirmPassword: ''
   });
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (token) {
+        router.replace('/homeScreen');
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    } finally {
+      setIsCheckingAuth(false);
+    }
+  };
 
   const validateForm = () => {
     let isValid = true;
@@ -43,12 +67,32 @@ const CreateAccountScreen = () => {
     return isValid;
   };
 
-  const handleCreateAccount = () => {
-    if (validateForm()) {
+  const handleCreateAccount = async () => {
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    try {
+      console.log("hi");
+      const response = await axios.post(`${API_URL}/users/signup`, {
+        email,
+        password
+      });
+      
       router.push({
         pathname: '/email-verification',
         params: { email }
       });
+      
+    } catch (error: any) {
+      console.log(error)
+        
+      const errorMessage = error.response?.data?.message || 'Signup failed. Please try again.';
+      setErrors(prev => ({
+        ...prev,
+        email: errorMessage
+      }));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -118,10 +162,15 @@ const CreateAccountScreen = () => {
           {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
           
           <TouchableOpacity 
-            style={styles.createButton}
+            style={[styles.createButton, isLoading && { opacity: 0.7 }]}
             onPress={handleCreateAccount}
+            disabled={isLoading}
           >
-            <Text style={styles.createButtonText}>Create account</Text>
+            {isLoading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.createButtonText}>Create account</Text>
+            )}
           </TouchableOpacity>
           
           <Text style={styles.termsText}>

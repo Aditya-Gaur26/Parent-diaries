@@ -5,10 +5,12 @@ import {
   StyleSheet, 
   SafeAreaView, 
   TouchableOpacity, 
-  ScrollView 
+  ScrollView, 
+  Alert 
 } from 'react-native';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SettingsScreen = () => {
   const router = useRouter();
@@ -32,19 +34,13 @@ const SettingsScreen = () => {
         { iconName: "information-circle-outline", iconType: "Ionicons", label: "Terms and Policies" },
       ]
     },
-    {
-      title: "Cache & cellular",
-      items: [
-        { iconName: "trash-outline", iconType: "Ionicons", label: "Free up space" },
-        { iconName: "speedometer-outline", iconType: "Ionicons", label: "Data Saver" },
-      ]
-    },
+    
     {
       title: "Actions",
       items: [
         { iconName: "flag", iconType: "Feather", label: "Report a problem" },
         { iconName: "person-add-outline", iconType: "Ionicons", label: "Add account" },
-        { iconName: "logout", iconType: "MaterialIcons", label: "Log out", action: () => router.replace('/login-signup') },
+        { iconName: "logout", iconType: "MaterialIcons", label: "Log out", action: () => handleLogout() },
       ]
     },
   ];
@@ -70,6 +66,20 @@ const SettingsScreen = () => {
       router.push('/edit-profile');
     } else if (item.action) {
       item.action();
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      // Remove the auth token from AsyncStorage
+      await AsyncStorage.removeItem('authToken');
+      // Remove any user data
+      await AsyncStorage.removeItem('user');
+      // Navigate to the login-signup page
+      router.replace('/login-signup');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      Alert.alert('Error', 'Failed to logout. Please try again.');
     }
   };
 

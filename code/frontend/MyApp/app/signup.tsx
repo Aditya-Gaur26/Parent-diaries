@@ -1,10 +1,72 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AUTH_URL } from '../config/environment';
 
 const SignUpScreen = () => {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (token) {
+        router.replace('/homeScreen');
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    } finally {
+      setIsCheckingAuth(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      setIsLoading(true);
+      console.log('Starting Google login...');
+      
+      // Open browser for Google authentication
+      const result = await WebBrowser.openAuthSessionAsync(
+        `${AUTH_URL}/google`,
+        'wavediaries://'
+      );
+      
+      console.log('Auth result type:', result.type);
+      
+      // Handle the result
+      if (result.type === 'success') {
+        const url = result.url;
+        console.log('Success URL:', url);
+        
+        if (url.includes('token=')) {
+          const token = url.split('token=')[1].split('&')[0];
+          console.log('Token received');
+          await AsyncStorage.setItem('authToken', token);
+          router.replace('/homeScreen');
+        } else if (url.includes('error=')) {
+          const error = decodeURIComponent(url.split('error=')[1].split('&')[0]);
+          console.error('Auth error:', error);
+          Alert.alert('Login Failed', error);
+        }
+      } else {
+        console.log('Auth cancelled or failed');
+      }
+    } catch (error) {
+      console.error('Google login error:', error);
+      Alert.alert('Login Failed', 'An error occurred during Google authentication.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   return (
     <SafeAreaView style={styles.container}>
@@ -28,7 +90,7 @@ const SignUpScreen = () => {
         <View style={styles.buttonContainer}>
           <TouchableOpacity 
             style={styles.googleButton}
-            onPress={() => router.push('/homeScreen')}
+            onPress={handleGoogleLogin}
           >
             <Image 
               source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }} 

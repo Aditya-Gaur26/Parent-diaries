@@ -1,10 +1,83 @@
-import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { API_URL,AUTH_URL } from '../config/environment';
 
-export default function LoginSignupScreen() {
+export default function HomeScreen() {
   const router = useRouter();
+  const [user, setUser] = useState({ name: 'User', email: '', avatar: null });
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Fetch user profile when component mounts
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      // Get auth token from AsyncStorage
+      const token = await AsyncStorage.getItem('authToken');
+      
+      if (!token) {
+        console.log('No auth token found, redirecting to login');
+        router.replace('/login');
+        return;
+      }
+
+      // Make request to get user profile using axios
+      const response = await axios.get(`${API_URL}/users/profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('User profile fetched:', response.data);
+      
+      // Update state with user data
+      setUser(response.data);
+      
+      // Store user data in AsyncStorage for use across the app
+      await AsyncStorage.setItem('userData', JSON.stringify(response.data));
+      
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      
+      // Handle axios errors
+      if (axios.isAxiosError(error)) {
+        const statusCode = error.response?.status;
+        
+        if (statusCode === 401) {
+          // Unauthorized - token expired or invalid
+          await AsyncStorage.removeItem('authToken');
+          Alert.alert(
+            'Session Expired', 
+            'Your session has expired. Please login again.',
+            [{ text: 'OK', onPress: () => router.replace('/welcome') }]
+          );
+        } else {
+          // Other API errors
+          Alert.alert(
+            'Error', 
+            'Failed to load user profile. Please try again later.',
+            [{ text: 'OK', onPress: () => router.replace('/login') }]
+          );
+        }
+      } else {
+        // Non-axios errors (network issues, etc)
+        Alert.alert(
+          'Connection Error', 
+          'Please check your internet connection and try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   const recentQuestions = [
     {
@@ -32,11 +105,11 @@ export default function LoginSignupScreen() {
           <View style={styles.userInfo}>
             <TouchableOpacity onPress={() => router.push('/edit-profile')}>
               <Image
-                source={require('@/assets/images/profile-pic.jpg')}
+                source={user.avatar ? { uri: user.avatar } : require('@/assets/images/profile-pic.jpg')}
                 style={styles.profilePic}
               />
             </TouchableOpacity>
-            <Text style={styles.greeting}>Hi, Jazeel</Text>
+            <Text style={styles.greeting}>Hi, {user.name || 'User'}</Text>
           </View>
           <TouchableOpacity 
             style={styles.settingsButton}
@@ -56,7 +129,7 @@ export default function LoginSignupScreen() {
         <View style={styles.optionsContainer}>
           <TouchableOpacity 
             style={styles.optionCard} 
-            onPress={() => router.push('/chat')}> {/* Changed from '/(tabs)' to '/chat' */}
+            onPress={() => router.push('/chat')}>
             <View style={styles.optionContent}>
               <Image
                 source={require('@/assets/images/chat-icon.png')}
@@ -70,7 +143,7 @@ export default function LoginSignupScreen() {
         <View style={styles.optionsContainer}>
           <TouchableOpacity 
             style={styles.optionCard} 
-            onPress={() => router.push('/voice-chat')}> {/* Changed from '/(tabs)' to '/voice-chat' */}
+            onPress={() => router.push('/voice-chat')}>
             <View style={styles.optionContent}>
               <Image
                 source={require('@/assets/images/parent_child_image.jpg')}
@@ -81,7 +154,6 @@ export default function LoginSignupScreen() {
           </TouchableOpacity>
         </View>
         
-
         {/* History section */}
         <View style={styles.historySection}>
           <View style={styles.historyHeader}>

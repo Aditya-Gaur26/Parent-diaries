@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import dotenv from "dotenv"
-import { sendOtp } from '../services/send_otp';
+import { sendOtp } from '../services/send_otp.js';
 
 dotenv.config();
 
@@ -10,28 +10,25 @@ dotenv.config();
 //This function Registers a New User
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, dob , mobile_number, password  } = req.body;
+    const { email , password  } = req.body;
     // Check if user already exists
     let user = await User.findOne({ email });
     if (user){
         
-        if(user.isVerified === true )return res.status(400).json({ message: 'User already exists' });
-        else await User.findByIdAndDelete(user._id);
+      if(user.isVerified === true )return res.status(400).json({ message: 'User already exists' });
+      else await User.findByIdAndDelete(user._id);
     }
 
-    // Generate a 6-digit verification code and an expiry time (e.g., 1 hour)
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate a 5-digit verification code and an expiry time (e.g., 1 hour)
+    const verificationCode = Math.floor(10000 + Math.random() * 90000).toString();
     const verificationCodeExpires = new Date(Date.now() + 3600000); // 1 hour from now
     
-    await send_otp(email, verificationCode);
+    
 
     // Create user (the pre-save middleware will handle password hashing)
     user = new User({ 
-        name, 
         email, 
         password, 
-        mobile_number, 
-        dob,
         verificationCode,
         verificationCodeExpires,
         isVerified: false,  // Initially false until the user verifies their email
@@ -40,6 +37,9 @@ export const registerUser = async (req, res) => {
     await user.save();
 
     res.status(201).json({ message: 'User registered .. please complete registration by email verification'});
+    
+    await sendOtp(email, verificationCode);
+
   } catch (error) {
     
     res.status(500).json({ message: error.message });
@@ -84,6 +84,7 @@ export const getUserProfile = async (req, res) => {
 
 export const changeUserProfile = async (req, res) => {
     try {
+        console.log("hi");
         const { name, email, mobile_number, dob } = req.body; // New user data from request
         // Find the user in the database
         let user = await User.findById(req.user.id).select("-password");
@@ -91,7 +92,11 @@ export const changeUserProfile = async (req, res) => {
         // Update user fields if provided
         if (name) user.name = name;
         if (mobile_number) user.mobile_number = mobile_number;
-        if (dob) user.dob = dob;    
+        if (dob){ 
+          const parts = dob.split('/');
+          const formattedDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+          user.dob = formattedDate;
+        }  
 
         // Save the updated user
         await user.save();
@@ -102,6 +107,7 @@ export const changeUserProfile = async (req, res) => {
         });
 
     } catch (error) {
+        console.log(error)
         return res.status(500).json({ message: error.message || "Internal Server Error" });
     }
 };
@@ -109,8 +115,9 @@ export const changeUserProfile = async (req, res) => {
 export const verifyEmail = async (req, res) => {
     try {
       const { email, verificationCode } = req.body;
+      console.log(email);
       const user = await User.findOne({ email });
-      
+     
       if (!user) return res.status(404).json({ message: "User not found" });
       
       // Check if the code matches and hasn't expired
@@ -122,9 +129,9 @@ export const verifyEmail = async (req, res) => {
         // Generate JWT token
         const token = user.generateToken();
         
-        res.status(200).json({ message: "Email verified successfully .. registration complete" , token });
+        return res.status(200).json({ message: "Email verified successfully .. registration complete" , token });
       } else {
-        res.status(400).json({ message: "Invalid or expired verification code .. try signup again" });
+        return res.status(400).json({ message: "Invalid or expired verification code .. try signup again" });
       }
     } catch (error) {
       res.status(500).json({ message: error.message });
