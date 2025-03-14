@@ -6,7 +6,10 @@ import connectDB from "./config/db.js";
 import userRoutes from "./routes/User.js"; 
 import passport  from './config/passport.js';
 import authRoutes from './routes/authRoutes.js';
-
+import llm from './routes/llm.js';
+import asr from './routes/asr.js';
+import tts from './routes/tts.js';
+import speech2speech from './routes/speech2speech.js';
 
 const app = express();
 
@@ -26,9 +29,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/users',userRoutes)
 app.use('/auth',authRoutes);
 app.use('/sentiment_analysis',sentimentAnalysisRoutes);
-
-
-
+app.use('/chat',llm);
+app.use('/asr',asr);
+app.use('/tts',tts);
+app.use('/speech2speech',speech2speech);
 
 
 connectDB().then(() => {
@@ -38,3 +42,9 @@ connectDB().then(() => {
     console.error("Failed to connect to MongoDB", error);
     process.exit(1); // Stop the process if DB connection fails
   });
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.get("/", (req, res) => {
+  res.send("API is running....");
+});
