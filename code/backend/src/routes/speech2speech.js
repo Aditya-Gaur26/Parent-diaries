@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 import axios from "axios";
 import dotenv from "dotenv";
 import FormData from "form-data";
-import authenticate_jwt from "../middlewares/authenticate_jwt";
+import authenticate_jwt from "../middlewares/authenticate_jwt.js";
 
 // Get the directory name
 const __filename = fileURLToPath(import.meta.url);

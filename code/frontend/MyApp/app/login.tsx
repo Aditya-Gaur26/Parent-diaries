@@ -64,12 +64,14 @@ const LoginScreen = () => {
 
       // If not hardcoded user, try API login
       const response = await axios.post(`${API_URL}/users/login`, { email, password });
-      const { token, user } = response.data;
+      const { token } = response.data;
+      console.log(response.data);
+      console.log(token)
 
       await AsyncStorage.setItem('authToken', token);
-      await AsyncStorage.setItem('userData', JSON.stringify(user));
       router.replace('/homeScreen');
     } catch (error) {
+      console.log(error);
       Alert.alert('Login Failed', 'Invalid username or password');
     } finally {
       setIsLoading(false);

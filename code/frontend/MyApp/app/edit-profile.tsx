@@ -167,7 +167,7 @@ const EditProfileScreen = () => {
 
         <View style={styles.profileImageContainer}>
           <Image
-            source={{ uri: 'https://randomuser.me/api/portraits/women/44.jpg' }}
+            source={{ uri: 'https://randomuser.me/api/portraits/men/44.jpg' }}
             style={styles.profileImage}
           />
           <TouchableOpacity style={styles.cameraButton}>

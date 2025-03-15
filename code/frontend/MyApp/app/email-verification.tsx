@@ -35,13 +35,17 @@ const EmailVerificationScreen = () => {
     }
   }, [timer]);
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  const formatTime = (seconds: number): string => {
+    const mins: number = Math.floor(seconds / 60);
+    const secs: number = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  }
 
-  const handleKeyPress = (key) => {
+  // Define the possible key inputs
+  type DigitKey = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '+';
+  type VerificationInputKey = DigitKey | 'backspace';
+
+  const handleKeyPress = (key: VerificationInputKey): void => {
     if (key === 'backspace') {
       const newCode = [...code];
       if (activeIndex > 0) {

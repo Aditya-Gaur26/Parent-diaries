@@ -1,8 +1,7 @@
 import { Router } from "express";
 import dotenv from "dotenv";
-import { authenticate } from "passport";
-import { llm, test_llm } from "../controllers/llm";
-import authenticate_jwt from "../middlewares/authenticate_jwt";
+import { llm, test_llm } from "../controllers/llm.js";
+import authenticate_jwt from "../middlewares/authenticate_jwt.js";
 
 dotenv.config();
 const router = Router();

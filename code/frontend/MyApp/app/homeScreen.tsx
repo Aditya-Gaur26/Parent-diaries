@@ -45,7 +45,7 @@ export default function HomeScreen() {
       
     } catch (error) {
       console.error('Error fetching profile:', error);
-      
+      await AsyncStorage.removeItem('authToken')
       // Handle axios errors
       if (axios.isAxiosError(error)) {
         const statusCode = error.response?.status;

@@ -3,8 +3,8 @@ import OpenAI from "openai";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import { test_tts, tts } from "../controllers/tts";
-import authenticate_jwt from "../middlewares/authenticate_jwt";
+import { test_tts, tts } from "../controllers/tts.js";
+import authenticate_jwt from "../middlewares/authenticate_jwt.js";
 
 // Get the directory name
 const __filename = fileURLToPath(import.meta.url);

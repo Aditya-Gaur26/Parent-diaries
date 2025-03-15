@@ -5,8 +5,8 @@ import multer from "multer";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { audio_transcription, test_asr_endpoint } from "../controllers/asr";
-import authenticate_jwt from "../middlewares/authenticate_jwt";
+import { audio_transcription, test_asr_endpoint } from "../controllers/asr.js";
+import authenticate_jwt from "../middlewares/authenticate_jwt.js";
 
 // Get the directory name
 const __filename = fileURLToPath(import.meta.url);
