@@ -27,11 +27,15 @@
       "package": "com.myapp.voicechat",
       "intentFilters": [
         {
-          "action": "VIEW",
+          "action": "android.intent.action.VIEW",
+          "autoVerify": true,
           "data": {
             "scheme": "wavediaries"
           },
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "android.intent.category.DEFAULT",
+            "android.intent.category.BROWSABLE"
+          ]
         }
       ]
     },

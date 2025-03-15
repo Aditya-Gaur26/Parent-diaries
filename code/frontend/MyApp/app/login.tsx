@@ -38,6 +38,45 @@ const LoginScreen = () => {
     }
   };
 
+  // Add useEffect to handle deep links for token
+  useEffect(() => {
+    // Function to handle deep links
+    interface DeepLinkEvent {
+      url: string;
+    }
+
+    const handleDeepLink = async (event: DeepLinkEvent): Promise<void> => {
+      const url: string = event.url;
+      console.log('Deep link detected:', url);
+      
+      if (url.includes('token=')) {
+      try {
+        const token: string = url.split('token=')[1].split('&')[0];
+        console.log('Token received from deep link:', token);
+        await AsyncStorage.setItem('authToken', token);
+        router.replace('/homeScreen');
+      } catch (error) {
+        console.error('Error processing deep link token:', error);
+      }
+      }
+    };
+
+    // Set up listeners for deep links
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+    
+    // Check if app was opened with a URL
+    Linking.getInitialURL().then(url => {
+      if (url) {
+        console.log('App opened with URL:', url);
+        handleDeepLink({ url });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
+
   const validateInput = () => {
     let isValid = true;
     if (!email) {
@@ -83,13 +122,21 @@ const LoginScreen = () => {
       setIsLoading(true);
       console.log('Starting Google login...');
       
+      // Store a flag to identify authentication is in progress
+      await AsyncStorage.setItem('googleAuthInProgress', 'true');
+      
       // Open browser for Google authentication
       const result = await WebBrowser.openAuthSessionAsync(
         `${AUTH_URL}/google`,
-        'wavediaries://'
+        'wavediaries://',
+        {
+          showInRecents: true,
+          createTask: true // For Android to create a new task
+        }
       );
       
       console.log('Auth result type:', result.type);
+      await AsyncStorage.removeItem('googleAuthInProgress');
       
       // Handle the result
       if (result.type === 'success') {
@@ -98,16 +145,28 @@ const LoginScreen = () => {
         
         if (url.includes('token=')) {
           const token = url.split('token=')[1].split('&')[0];
-          console.log('Token received');
+          console.log('Token received from WebBrowser');
           await AsyncStorage.setItem('authToken', token);
           router.replace('/homeScreen');
         } else if (url.includes('error=')) {
           const error = decodeURIComponent(url.split('error=')[1].split('&')[0]);
           console.error('Auth error:', error);
           Alert.alert('Login Failed', error);
+        } else {
+          console.log('No token found in URL, checking AsyncStorage');
+          // Check if token was stored via deep link handler
+          const storedToken = await AsyncStorage.getItem('authToken');
+          if (storedToken) {
+            router.replace('/homeScreen');
+          }
         }
       } else {
-        console.log('Auth cancelled or failed');
+        console.log('Auth cancelled or failed, checking for deep link token');
+        // Check if token was stored via deep link handler
+        const storedToken = await AsyncStorage.getItem('authToken');
+        if (storedToken) {
+          router.replace('/homeScreen');
+        }
       }
     } catch (error) {
       console.error('Google login error:', error);

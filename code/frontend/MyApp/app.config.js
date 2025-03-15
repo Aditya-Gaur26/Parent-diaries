@@ -4,11 +4,17 @@ export default {
     android: {
       intentFilters: [
         {
-          action: "VIEW",
-          data: {
-            scheme: "wavediaries"
-          },
-          category: ["BROWSABLE", "DEFAULT"]
+          action: "android.intent.action.VIEW",
+          autoVerify: true,
+          data: [
+            {
+              scheme: "wavediaries"
+            }
+          ],
+          category: [
+            "android.intent.category.DEFAULT", 
+            "android.intent.category.BROWSABLE"
+          ]
         }
       ]
     },
