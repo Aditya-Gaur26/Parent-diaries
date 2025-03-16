@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView, Alert, BackHandler } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AUTH_URL } from '../config/environment';
+import { BACKEND_URL } from '../config/environment';
 
 const SignUpScreen = () => {
   const router = useRouter();
@@ -36,7 +36,7 @@ const SignUpScreen = () => {
       
       // Open browser for Google authentication
       const result = await WebBrowser.openAuthSessionAsync(
-        `${AUTH_URL}/google`,
+        `${BACKEND_URL}/auth/google`,
         'wavediaries://'
       );
       
@@ -113,6 +113,12 @@ const SignUpScreen = () => {
             Already have an account? <Text style={styles.linkText} onPress={() => router.push('/login')}>Log in</Text>
           </Text>
         </View>
+
+        <TouchableOpacity onPress={() => router.push('/terms')}>
+          <Text style={{ textAlign: 'center', color: '#666', marginTop: 16 }}>
+            View Terms & Conditions
+          </Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );

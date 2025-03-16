@@ -58,6 +58,12 @@ const SignUpScreen = () => {
           >
             <Text style={styles.secondaryButtonText}>Create account</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => router.push('/terms')}>
+            <Text style={{ textAlign: 'center', color: '#666', marginTop: 16 }}>
+              View Terms & Conditions
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>

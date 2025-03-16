@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Image, Alert, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Image, Alert, ActivityIndicator, Linking, BackHandler } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import * as WebBrowser from 'expo-web-browser';
-import { API_URL,AUTH_URL } from '../config/environment';
+import { BACKEND_URL } from '../config/environment';
 
 // Register for OAuth redirect handling
 WebBrowser.maybeCompleteAuthSession();
@@ -102,7 +102,7 @@ const LoginScreen = () => {
       }
 
       // If not hardcoded user, try API login
-      const response = await axios.post(`${API_URL}/users/login`, { email, password });
+      const response = await axios.post(`${BACKEND_URL}/api/users/login`, { email, password });
       const { token } = response.data;
       console.log(response.data);
       console.log(token)
@@ -127,7 +127,7 @@ const LoginScreen = () => {
       
       // Open browser for Google authentication
       const result = await WebBrowser.openAuthSessionAsync(
-        `${AUTH_URL}/google`,
+        `${BACKEND_URL}/auth/google`,
         'wavediaries://',
         {
           showInRecents: true,
@@ -234,7 +234,10 @@ const LoginScreen = () => {
             </TouchableOpacity>
           </View>
           
-          <TouchableOpacity style={styles.forgotPassword}>
+          <TouchableOpacity 
+            style={styles.forgotPassword}
+            onPress={() => router.push('/forgotPassword')}
+          >
             <Text style={styles.forgotPasswordText}>Forgot password?</Text>
           </TouchableOpacity>
           
@@ -270,6 +273,12 @@ const LoginScreen = () => {
             <Text style={styles.signupLink}>Sign up</Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity onPress={() => router.push('/terms')}>
+          <Text style={{ textAlign: 'center', color: '#666', marginTop: 16 }}>
+            View Terms & Conditions
+          </Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );

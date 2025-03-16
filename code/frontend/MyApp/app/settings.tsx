@@ -21,25 +21,23 @@ const SettingsScreen = () => {
       title: "Account",
       items: [
         { iconName: "person-outline", iconType: "Ionicons", label: "Edit profile" },
-        { iconName: "shield-outline", iconType: "Ionicons", label: "Security" },
-        { iconName: "notifications-outline", iconType: "Ionicons", label: "Notifications" },
-        { iconName: "lock-closed-outline", iconType: "Ionicons", label: "Privacy" },
+        { iconName: "shield-outline", iconType: "Ionicons", label: "Security", action: () => router.push('/security') },
+        { iconName: "notifications-outline", iconType: "Ionicons", label: "Notifications", action: () => router.push('/notification-settings') },
+        { iconName: "lock-closed-outline", iconType: "Ionicons", label: "Privacy", action: () => router.push('/privacy') },
       ]
     },
     {
       title: "Support & About",
       items: [
-        { iconName: "card-outline", iconType: "Ionicons", label: "My Subscription" },
-        { iconName: "help-circle-outline", iconType: "Ionicons", label: "Help & Support" },
-        { iconName: "information-circle-outline", iconType: "Ionicons", label: "Terms and Policies" },
+        { iconName: "card-outline", iconType: "Ionicons", label: "My Subscription", action: () => router.push('/my-subscription') },
+        { iconName: "information-circle-outline", iconType: "Ionicons", label: "Terms and Policies", action: () => router.push('/terms') },
       ]
     },
     
     {
       title: "Actions",
       items: [
-        { iconName: "flag", iconType: "Feather", label: "Report a problem" },
-        { iconName: "person-add-outline", iconType: "Ionicons", label: "Add account" },
+        { iconName: "flag", iconType: "Feather", label: "Report a problem", action: () => router.push('/report-problem') },
         { iconName: "logout", iconType: "MaterialIcons", label: "Log out", action: () => handleLogout() },
       ]
     },
@@ -120,6 +118,7 @@ const SettingsScreen = () => {
             </View>
           </View>
         ))}
+        
       </ScrollView>
     </SafeAreaView>
   );

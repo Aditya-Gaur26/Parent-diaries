@@ -1,6 +1,7 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import User from '../models/User.js';
+import Subscription from '../models/Subscription.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -48,14 +49,38 @@ passport.use(
             // avatar: avatar,
             mobile_number: mobileNumber,
             dob: dob,
-            isVerified : true
+            isVerified: true,
+            subscriptionType: 'free' // Set default subscription type
           }).save();
+          
+          // Create a default subscription for the new Google user
+          const newSubscription = new Subscription({
+            userId: user._id,
+            type: 'free',
+            startDate: new Date(),
+            autoRenew: true
+          });
+          await newSubscription.save();
+          
         } else {
           // Update existing user with any new information
           if (mobileNumber || dob) {
             if (mobileNumber) user.mobileNumber = mobileNumber;
             if (dob) user.dob = dob;
             await user.save();
+          }
+          
+          // Check if this user has a subscription entry already
+          const existingSubscription = await Subscription.findOne({ userId: user._id });
+          if (!existingSubscription) {
+            // Create subscription if it doesn't exist
+            const newSubscription = new Subscription({
+              userId: user._id,
+              type: user.subscriptionType || 'free',
+              startDate: new Date(),
+              autoRenew: true
+            });
+            await newSubscription.save();
           }
         }
         

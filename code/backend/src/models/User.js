@@ -52,22 +52,62 @@ const UserSchema = new mongoose.Schema(
       enum: ['user', 'admin'],
       default: 'user',
     },
-    mobile_number:String,
-    age:Number,
-    dob:Date,
-    googleid:String,
+    mobile_number: String,
+    age: Number,
+    dob: Date,
+    googleid: String,
     verificationCode: String,
     verificationCodeExpires: Date,
     isVerified: {
       type: Boolean,
       default: false,
     },
+    forgotPasswordCode: String,
+    forgotPasswordCodeExpires: Date,
+    notificationSettings: {
+      pushEnabled: {
+        type: Boolean,
+        default: true
+      },
+      emailEnabled: {
+        type: Boolean,
+        default: true
+      },
+      notificationTypes: {
+        newMessages: {
+          type: Boolean,
+          default: true
+        },
+        reminders: {
+          type: Boolean,
+          default: true
+        },
+        updates: {
+          type: Boolean,
+          default: true
+        },
+        marketingEmails: {
+          type: Boolean,
+          default: false
+        },
+        activitySummary: {
+          type: Boolean,
+          default: true
+        }
+      }
+    },
+    
+    // Simplify subscription to just the type
+    subscriptionType: {
+      type: String,
+      enum: ['free', 'premium'],
+      default: 'free'
+    }
     // Add children array to User schema
     children: [ChildSchema],
   },
   { timestamps: true }
 );
-
 
 // Pre-save middleware to hash password and calculate age
 UserSchema.pre('save', async function (next) {

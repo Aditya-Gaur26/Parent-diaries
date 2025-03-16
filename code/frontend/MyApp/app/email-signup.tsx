@@ -1,10 +1,10 @@
 import React, { useState,useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, Image, ActivityIndicator, BackHandler } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import axios from 'axios';
-import { API_URL,AUTH_URL } from '../config/environment';
+import { BACKEND_URL } from '../config/environment';
 
 
 const CreateAccountScreen = () => {
@@ -73,7 +73,7 @@ const CreateAccountScreen = () => {
     setIsLoading(true);
     try {
       console.log("hi");
-      const response = await axios.post(`${API_URL}/users/signup`, {
+      const response = await axios.post(`${BACKEND_URL}/api/users/signup`, {
         email,
         password
       });
@@ -179,6 +179,15 @@ const CreateAccountScreen = () => {
               Terms and Conditions
             </Text>
           </Text>
+          
+          <View style={styles.loginLinkContainer}>
+            <Text style={styles.loginText}>
+              Already have an account?{' '}
+              <Text style={styles.linkText} onPress={() => router.push('/login')}>
+                Log in
+              </Text>
+            </Text>
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -262,6 +271,15 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: 'red',
     borderWidth: 1,
+  },
+  loginLinkContainer: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  loginText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });
 
