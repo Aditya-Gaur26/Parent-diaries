@@ -102,7 +102,7 @@ const UserSchema = new mongoose.Schema(
       type: String,
       enum: ['free', 'premium'],
       default: 'free'
-    }
+    },
     // Add children array to User schema
     children: [ChildSchema],
   },
