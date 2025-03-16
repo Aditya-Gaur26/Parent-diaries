@@ -1,22 +1,17 @@
 import express from 'express';
 import auth from '../middlewares/authenticate_jwt.js';
-import { addVaccination, getChildVaccinations, updateVaccination } from '../controllers/vaccination.js';
+import { getChildVaccinations, manageVaccination } from '../controllers/vaccination.js';
 
 const router = express.Router();
 
-// @route   POST /api/vaccination
-// @desc    Add a new vaccination record for a child
+// @route   POST /api/vaccination/manage
+// @desc    Add or update vaccination record
 // @access  Private (Parents only)
-router.post('/', auth, addVaccination);
+router.post('/manage', auth, manageVaccination);
 
 // @route   GET /api/vaccination/child/:childId
-// @desc    Get all vaccination records for a specific child
+// @desc    Get all vaccination records and schedule for a child
 // @access  Private (Parents only)
 router.get('/child/:childId', auth, getChildVaccinations);
-
-// @route   PUT /api/vaccination/:id
-// @desc    Update vaccination record (e.g. mark as administered with actual date)
-// @access  Private (Parents only)
-router.put('/:id', auth, updateVaccination);
 
 export default router;

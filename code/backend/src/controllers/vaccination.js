@@ -1,45 +1,86 @@
 import Vaccination, { DoseType } from '../models/Vaccination.js';
 import User from '../models/User.js';
+import { generateVaccinationChart } from '../utils/vaccinationSchedule.js';
 
-// Add a new vaccination record
-export const addVaccination = async (req, res) => {
+// Manage vaccination record (add or update)
+export const manageVaccination = async (req, res) => {
   try {
-    const { childId, disease, doseType, expectedDate, actualDate } = req.body;
+    const { childId, disease, doseType, actualDate } = req.body;
 
     // Validate required inputs
-    if (!childId || !disease || !doseType || !expectedDate) {
-      return res.status(400).json({ msg: 'Please provide childId, disease, doseType, and expectedDate' });
+    if (!childId || !disease || !doseType) {
+      return res.status(400).json({ msg: 'Please provide childId, disease, and doseType' });
     }
 
-    // Validate dose type is valid
+    // Validate dose type
     if (!Object.values(DoseType).includes(doseType)) {
       return res.status(400).json({ 
         msg: `Invalid dose type. Must be one of: ${Object.values(DoseType).join(', ')}` 
       });
     }
 
-    // Verify child belongs to parent by checking user's children array
+    // Get child info including DOB
     const user = await User.findById(req.user.id);
-    const childExists = user.children.some(child => child._id.toString() === childId);
+    const child = user.children.find(child => child._id.toString() === childId);
     
-    if (!childExists) {
-      return res.status(401).json({ msg: 'Not authorized to add vaccination for this child' });
+    if (!child) {
+      return res.status(401).json({ msg: 'Not authorized to manage vaccination for this child' });
     }
 
-    // Create vaccination record
-    const vaccination = new Vaccination({
-      childId,
-      disease,
-      doseType,
-      expectedDate,
-      actualDate: actualDate || null,
-      createdBy: req.user.id
+    // Generate schedule based on DOB to get expected date
+    const schedule = generateVaccinationChart(child.dateOfBirth);
+    const expectedVaccination = schedule.find(v => v.disease === disease && v.doseType === doseType);
+
+    if (!expectedVaccination) {
+      return res.status(400).json({ msg: 'Invalid vaccination schedule combination' });
+    }
+
+    // Find existing record or create new one
+    let vaccination = await Vaccination.findOne({ 
+      childId, 
+      disease, 
+      doseType 
     });
 
-    const savedVaccination = await vaccination.save();
-    res.status(201).json(savedVaccination);
+    if (vaccination) {
+      // Update existing record
+      vaccination = await Vaccination.findByIdAndUpdate(
+        vaccination._id,
+        { 
+          $set: { 
+            actualDate,
+            expectedDate: expectedVaccination.expectedDate 
+          } 
+        },
+        { new: true }
+      );
+    } else {
+      // Create new record
+      vaccination = new Vaccination({
+        childId,
+        disease,
+        doseType,
+        expectedDate: expectedVaccination.expectedDate,
+        actualDate,
+        createdBy: req.user.id
+      });
+      vaccination = await vaccination.save();
+    }
+
+    // Return updated schedule
+    const updatedVaccinations = await Vaccination.find({ childId });
+    const updatedChart = generateVaccinationChart(child.dateOfBirth, updatedVaccinations.map(v => ({
+      disease: v.disease,
+      doseType: v.doseType,
+      actualDate: v.actualDate
+    })));
+
+    res.json({
+      vaccination,
+      completeSchedule: updatedChart
+    });
   } catch (err) {
-    console.error('Error adding vaccination record:', err.message);
+    console.error('Error managing vaccination record:', err.message);
     res.status(500).send('Server Error');
   }
 };
@@ -47,69 +88,31 @@ export const addVaccination = async (req, res) => {
 // Get all vaccination records for a specific child
 export const getChildVaccinations = async (req, res) => {
   try {
-    // Verify child belongs to parent
     const user = await User.findById(req.user.id);
-    const childExists = user.children.some(child => child._id.toString() === req.params.childId);
+    const child = user.children.find(child => child._id.toString() === req.params.childId);
     
-    if (!childExists) {
+    if (!child) {
       return res.status(401).json({ msg: 'Not authorized to view this child\'s records' });
     }
 
+    // Get actual vaccination records
     const vaccinations = await Vaccination.find({ 
       childId: req.params.childId 
     }).sort({ expectedDate: 1 });
+
+    // Generate complete vaccination chart using actual records
+    const vaccinationChart = generateVaccinationChart(child.dateOfBirth, vaccinations.map(v => ({
+      disease: v.disease,
+      doseType: v.doseType,
+      actualDate: v.actualDate
+    })));
     
-    res.json(vaccinations);
+    res.json({
+      actualRecords: vaccinations,
+      completeSchedule: vaccinationChart
+    });
   } catch (err) {
     console.error('Error fetching vaccination records:', err.message);
-    res.status(500).send('Server Error');
-  }
-};
-
-// Update vaccination record
-export const updateVaccination = async (req, res) => {
-  try {
-    const { disease, doseType, expectedDate, actualDate } = req.body;
-    
-    // Find vaccination record
-    let vaccination = await Vaccination.findById(req.params.id);
-    
-    if (!vaccination) {
-      return res.status(404).json({ msg: 'Vaccination record not found' });
-    }
-    
-    // Check if user is authorized to update this vaccination record
-    const user = await User.findById(req.user.id);
-    const childExists = user.children.some(child => child._id.toString() === vaccination.childId.toString());
-    
-    if (!childExists) {
-      return res.status(401).json({ msg: 'Not authorized to update this record' });
-    }
-    
-    // Build vaccination fields to update
-    const updateFields = {};
-    if (disease) updateFields.disease = disease;
-    if (doseType) {
-      if (!Object.values(DoseType).includes(doseType)) {
-        return res.status(400).json({ 
-          msg: `Invalid dose type. Must be one of: ${Object.values(DoseType).join(', ')}` 
-        });
-      }
-      updateFields.doseType = doseType;
-    }
-    if (expectedDate) updateFields.expectedDate = expectedDate;
-    if (actualDate) updateFields.actualDate = actualDate;
-    
-    // Update vaccination
-    vaccination = await Vaccination.findByIdAndUpdate(
-      req.params.id,
-      { $set: updateFields },
-      { new: true }
-    );
-    
-    res.json(vaccination);
-  } catch (err) {
-    console.error('Error updating vaccination record:', err.message);
     res.status(500).send('Server Error');
   }
 };
