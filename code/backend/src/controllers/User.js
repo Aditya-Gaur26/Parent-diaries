@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import dotenv from "dotenv"
 import { sendOtp } from '../services/send_otp.js';
@@ -62,27 +63,32 @@ export const registerUser = async (req, res) => {
 
 //  Login User
 export const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    console.log(email, password);
-    // Find user by email
-    const user = await User.findOne({ email, isVerified: true });
-    if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+    try {
+        const { email, password } = req.body;
+        console.log('Login attempt for:', email);
+        
+        const user = await User.findOne({ email, isVerified: true });
+        if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
-    // Compare password
-    const isMatch = await user.matchPassword(password);
-    console.log(isMatch)
+        const isMatch = await user.matchPassword(password);
+        if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-    if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+        const token = user.generateToken();
+        
+        // Verify token immediately after generation
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            console.log('Token verification successful:', decoded);
+        } catch (verifyError) {
+            console.error('Token verification failed:', verifyError);
+            return res.status(500).json({ message: 'Token generation error' });
+        }
 
-    // Generate JWT token
-    const token = user.generateToken();
-    console.log("JWT TOKEN : ", token);
-
-    res.status(200).json({ message: 'Login successful', token });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+        res.status(200).json({ message: 'Login successful', token });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ message: error.message });
+    }
 };
 
 // This Function Gets User Profile (Protected Route)
