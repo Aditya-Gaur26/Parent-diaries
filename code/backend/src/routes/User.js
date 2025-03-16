@@ -28,7 +28,7 @@ router.get('/', (req, res) => {
 router.get('/profile', authenticate_jwt,getUserProfile );
 router.post('/login',loginUser);
 router.post('/signup',registerUser);
-router.get('/profile',authenticate_jwt,getUserProfile)
+router.get('/ profile',authenticate_jwt,getUserProfile)
 router.put('/profile',authenticate_jwt,changeUserProfile);
 router.post('/verify_email',verifyEmail);
 router.post('/forgot-password',forgotPassword);
