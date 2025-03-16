@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { API_URL } from '../config/environment';
+import {  BACKEND_URL } from '../config/environment';
 
 const NotificationSettingsScreen = () => {
   const router = useRouter();
@@ -47,7 +47,7 @@ const NotificationSettingsScreen = () => {
         // Then try to get from backend if user is logged in
         const token = await AsyncStorage.getItem('authToken');
         if (token) {
-          const response = await axios.get(`${API_URL}/users/profile`, {
+          const response = await axios.get(`${BACKEND_URL}/api/users/profile`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           
@@ -90,7 +90,7 @@ const NotificationSettingsScreen = () => {
       // Send to backend API
       const token = await AsyncStorage.getItem('authToken');
       if (token) {
-        await axios.post(`${API_URL}/users/notification-settings`, settings, {
+        await axios.post(`${BACKEND_URL}/api/users/notification-settings`, settings, {
           headers: { Authorization: `Bearer ${token}` }
         });
       }

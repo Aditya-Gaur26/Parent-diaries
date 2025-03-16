@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { API_URL } from '../config/environment';
+import { BACKEND_URL } from '../config/environment';
 
 const EditProfileScreen = () => {
   const router = useRouter();
@@ -132,7 +132,7 @@ const EditProfileScreen = () => {
       };
 
       const response = await axios.put(
-        `${API_URL}/users/profile`,
+        `${BACKEND_URL}/api/users/profile`,
         dataToSend,
         {
           headers: {

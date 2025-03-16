@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator, BackHandler } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL,AUTH_URL } from '../config/environment';
+import { BACKEND_URL} from '../config/environment';
 
 const EmailVerificationScreen = () => {
   const router = useRouter();
@@ -73,7 +73,7 @@ const EmailVerificationScreen = () => {
     setTimer(20);
     
     try {
-      await axios.post(`${API_URL}/users/resend-code`, { email });
+      await axios.post(`${BACKEND_URL}/api/users/resend-code`, { email });
     } catch (error) {
       Alert.alert('Error', 'Failed to resend verification code');
     }
@@ -89,7 +89,7 @@ const EmailVerificationScreen = () => {
     console.log("hi");
     try {
       const verificationCode = code.join('');
-      const response = await axios.post(`${API_URL}/users/verify_email`, {
+      const response = await axios.post(`${BACKEND_URL}/api/users/verify_email`, {
         email,
         verificationCode
       });

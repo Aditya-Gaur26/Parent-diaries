@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import axios from 'axios';
-import { API_URL } from '../config/environment';
+import { BACKEND_URL } from '../config/environment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const problemCategories = [
@@ -53,7 +53,7 @@ const ReportProblemScreen = () => {
       }
       
       const response = await axios.post(
-        `${API_URL}/users/report-issue`,
+        `${BACKEND_URL}/api/users/report-issue`,
         {
           category: selectedCategory,
           description

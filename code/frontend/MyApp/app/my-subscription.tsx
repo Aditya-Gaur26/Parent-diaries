@@ -14,7 +14,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { API_URL } from '../config/environment';
+import { BACKEND_URL } from '../config/environment';
 
 const MySubscriptionScreen = () => {
   const router = useRouter();
@@ -46,7 +46,7 @@ const MySubscriptionScreen = () => {
         if (token) {
           try {
             // Always fetch detailed subscription info from dedicated endpoint
-            const response = await axios.get(`${API_URL}/users/get-subscription`, {
+            const response = await axios.get(`${BACKEND_URL}/api/users/get-subscription`, {
               headers: { Authorization: `Bearer ${token}` }
             });
             
@@ -106,7 +106,7 @@ const MySubscriptionScreen = () => {
               
               // Update subscription through API
               const response = await axios.post(
-                `${API_URL}/users/update-subscription`,
+                `${BACKEND_URL}/api/users/update-subscription`,
                 {
                   type: 'premium',
                   autoRenew: true,
@@ -152,7 +152,7 @@ const MySubscriptionScreen = () => {
       
       // Toggle auto-renewal via API
       const response = await axios.post(
-        `${API_URL}/users/update-subscription`,
+        `${BACKEND_URL}/api/users/update-subscription`,
         {
           autoRenew: !subscription.autoRenew
         },
@@ -203,7 +203,7 @@ const MySubscriptionScreen = () => {
               
               // Cancel subscription via API
               const response = await axios.post(
-                `${API_URL}/users/update-subscription`,
+                `${BACKEND_URL}/api/users/update-subscription`,
                 {
                   type: 'free'
                 },

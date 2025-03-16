@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Alert } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Alert, BackHandler } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { API_URL,AUTH_URL } from '../config/environment';
+import { BACKEND_URL } from '../config/environment';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -28,7 +28,7 @@ export default function HomeScreen() {
       }
 
       // Make request to get user profile using axios
-      const response = await axios.get(`${API_URL}/users/profile`, {
+      const response = await axios.get(`${BACKEND_URL}/api/users/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -129,7 +129,7 @@ export default function HomeScreen() {
         <View style={styles.optionsContainer}>
           <TouchableOpacity 
             style={styles.optionCard} 
-            onPress={() => router.push('/chat')}>
+            onPress={() => router.push('/chat2')}>
             <View style={styles.optionContent}>
               <Image
                 source={require('@/assets/images/chat-icon.png')}

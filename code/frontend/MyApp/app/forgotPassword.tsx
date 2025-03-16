@@ -8,12 +8,13 @@ import {
   SafeAreaView,
   Image,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  BackHandler
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import axios from 'axios';
-import { API_URL } from '../config/environment';
+import { BACKEND_URL } from '../config/environment';
 
 const ForgotPasswordScreen = () => {
   const router = useRouter();
@@ -28,7 +29,7 @@ const ForgotPasswordScreen = () => {
     }
     setIsLoading(true);
     try {
-      await axios.post(`${API_URL}/users/forgot-password`, { email });
+      await axios.post(`${BACKEND_URL}/api/users/forgot-password`, { email });
       // Rather than going back to login, navigate to resetPassword with email
       router.push({ pathname: '/resetPassword', params: { email } });
     } catch (err) {

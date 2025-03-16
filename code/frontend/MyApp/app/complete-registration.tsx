@@ -14,7 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL,AUTH_URL } from '../config/environment';
+import { BACKEND_URL } from '../config/environment';
 
 
 const RegistrationScreen = () => {
@@ -75,7 +75,7 @@ const RegistrationScreen = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       
-      const response = await axios.put(`${API_URL}/users/profile`, {
+      const response = await axios.put(`${BACKEND_URL}/api/users/profile`, {
         name,
         dob,
         mobile_number: mobileNumber || undefined
