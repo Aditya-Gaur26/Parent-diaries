@@ -1,7 +1,23 @@
 import express from 'express';
 // import { authenticate } from 'passport';
 import authenticate_jwt from '../middlewares/authenticate_jwt.js'
-import { registerUser, loginUser, getUserProfile, changeUserProfile, verifyEmail, forgotPassword, resetPassword, reportIssue, setNotificationSettings,  getSubscription, updateSubscription } from '../controllers/User.js';
+import { 
+  registerUser, 
+  loginUser, 
+  getUserProfile, 
+  changeUserProfile, 
+  verifyEmail, 
+  forgotPassword, 
+  resetPassword, 
+  reportIssue, 
+  setNotificationSettings, 
+  getSubscription, 
+  updateSubscription,
+  addChild,
+  getChildren,
+  updateChild,
+  removeChild
+} from '../controllers/User.js';
 const router = express.Router();
 
 // Example route
@@ -22,4 +38,10 @@ router.post('/notification-settings',authenticate_jwt,setNotificationSettings);
 router.get('/get-subscription',authenticate_jwt,getSubscription);
 router.post('/update-subscription',authenticate_jwt,updateSubscription)
 
-export default router; 
+// Child management routes
+router.post('/children', authenticate_jwt, addChild);
+router.get('/children', authenticate_jwt, getChildren);
+router.put('/children/:childId', authenticate_jwt, updateChild);
+router.delete('/children/:childId', authenticate_jwt, removeChild);
+
+export default router;

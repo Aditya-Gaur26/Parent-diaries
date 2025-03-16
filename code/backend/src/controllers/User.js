@@ -66,7 +66,7 @@ export const loginUser = async (req, res) => {
     
     // Generate JWT token
     const token = user.generateToken();
-    console.log(token);
+    console.log("JWT TOKEN : ", token);
 
     res.status(200).json({ message: 'Login successful', token });
   } catch (error) {
@@ -253,12 +253,13 @@ export const reportIssue = async (req, res) => {
   }
 };
 
-
 export const setNotificationSettings = async (req, res) => {
   try {
     const { pushEnabled, emailEnabled, notificationTypes } = req.body;
-    
-    // Validate required fields
+
+
+
+        // Validate required fields
     if (pushEnabled === undefined || emailEnabled === undefined || !notificationTypes) {
       return res.status(400).json({ message: 'Incomplete notification settings provided' });
     }
@@ -278,6 +279,7 @@ export const setNotificationSettings = async (req, res) => {
     
     // Save updated user
     await user.save();
+
     
     return res.status(200).json({
       message: 'Notification settings updated successfully',
@@ -426,6 +428,133 @@ export const updateSubscription = async (req, res) => {
       message: 'Error updating subscription',
       error: error.message 
     });
+  }
+};
+
+// Add a new child to user profile
+export const addChild = async (req, res) => {
+  try {
+    const { name, dateOfBirth, gender, bloodGroup, medicalConditions, allergies } = req.body;
+    
+    // Validate required fields
+    if (!name || !dateOfBirth || !gender) {
+      return res.status(400).json({ message: 'Name, date of birth, and gender are required' });
+    }
+    
+    // Find user
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Create new child object
+    const newChild = {
+      name,
+      dateOfBirth: new Date(dateOfBirth),
+      gender,
+      bloodGroup: bloodGroup || null,
+      medicalConditions: medicalConditions || [],
+      allergies: allergies || []
+    };
+    
+    // Add child to user's children array
+    user.children.push(newChild);
+    await user.save();
+    
+    return res.status(201).json({
+      message: 'Child added successfully',
+      child: user.children[user.children.length - 1]
+    });
+    
+  } catch (error) {
+    console.error('Add child error:', error);
+    return res.status(500).json({ message: 'Error adding child to profile' });
+  }
+};
+
+// Get all children for a user
+export const getChildren = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('children');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    return res.status(200).json({ children: user.children });
+    
+  } catch (error) {
+    console.error('Get children error:', error);
+    return res.status(500).json({ message: 'Error retrieving children' });
+  }
+};
+
+// Update child details
+export const updateChild = async (req, res) => {
+  try {
+    const childId = req.params.childId;
+    const { name, dateOfBirth, gender, bloodGroup, medicalConditions, allergies } = req.body;
+    
+    // Find user
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Find child in user's children array
+    const childIndex = user.children.findIndex(child => child._id.toString() === childId);
+    if (childIndex === -1) {
+      return res.status(404).json({ message: 'Child not found' });
+    }
+    
+    // Update child fields if provided
+    if (name) user.children[childIndex].name = name;
+    if (dateOfBirth) user.children[childIndex].dateOfBirth = new Date(dateOfBirth);
+    if (gender) user.children[childIndex].gender = gender;
+    if (bloodGroup) user.children[childIndex].bloodGroup = bloodGroup;
+    if (medicalConditions) user.children[childIndex].medicalConditions = medicalConditions;
+    if (allergies) user.children[childIndex].allergies = allergies;
+    
+    await user.save();
+    
+    return res.status(200).json({
+      message: 'Child updated successfully',
+      child: user.children[childIndex]
+    });
+    
+  } catch (error) {
+    console.error('Update child error:', error);
+    return res.status(500).json({ message: 'Error updating child information' });
+  }
+};
+
+// Remove child from profile
+export const removeChild = async (req, res) => {
+  try {
+    const childId = req.params.childId;
+    
+    // Find user
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Find and remove child from array
+    const initialLength = user.children.length;
+    user.children = user.children.filter(child => child._id.toString() !== childId);
+    
+    if (user.children.length === initialLength) {
+      return res.status(404).json({ message: 'Child not found' });
+    }
+    
+    await user.save();
+    
+    return res.status(200).json({
+      message: 'Child removed successfully'
+    });
+    
+  } catch (error) {
+    console.error('Remove child error:', error);
+    return res.status(500).json({ message: 'Error removing child from profile' });
   }
 };
 
