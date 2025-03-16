@@ -234,7 +234,10 @@ const LoginScreen = () => {
             </TouchableOpacity>
           </View>
           
-          <TouchableOpacity style={styles.forgotPassword}>
+          <TouchableOpacity 
+            style={styles.forgotPassword}
+            onPress={() => router.push('/forgotPassword')}
+          >
             <Text style={styles.forgotPasswordText}>Forgot password?</Text>
           </TouchableOpacity>
           
@@ -270,6 +273,12 @@ const LoginScreen = () => {
             <Text style={styles.signupLink}>Sign up</Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity onPress={() => router.push('/terms')}>
+          <Text style={{ textAlign: 'center', color: '#666', marginTop: 16 }}>
+            View Terms & Conditions
+          </Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );

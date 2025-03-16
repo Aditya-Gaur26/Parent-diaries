@@ -1,7 +1,7 @@
 import express from 'express';
 // import { authenticate } from 'passport';
 import authenticate_jwt from '../middlewares/authenticate_jwt.js'
-import { registerUser, loginUser, getUserProfile, changeUserProfile, verifyEmail } from '../controllers/User.js';
+import { registerUser, loginUser, getUserProfile, changeUserProfile, verifyEmail, forgotPassword, resetPassword, reportIssue, setNotificationSettings,  getSubscription, updateSubscription } from '../controllers/User.js';
 const router = express.Router();
 
 // Example route
@@ -15,5 +15,11 @@ router.post('/signup',registerUser);
 router.get('/profile',authenticate_jwt,getUserProfile)
 router.put('/profile',authenticate_jwt,changeUserProfile);
 router.post('/verify_email',verifyEmail);
+router.post('/forgot-password',forgotPassword);
+router.post('/reset-password',resetPassword)
+router.post('/report-issue',authenticate_jwt,reportIssue)
+router.post('/notification-settings',authenticate_jwt,setNotificationSettings);
+router.get('/get-subscription',authenticate_jwt,getSubscription);
+router.post('/update-subscription',authenticate_jwt,updateSubscription)
 
 export default router; 

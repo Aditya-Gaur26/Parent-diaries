@@ -113,6 +113,12 @@ const SignUpScreen = () => {
             Already have an account? <Text style={styles.linkText} onPress={() => router.push('/login')}>Log in</Text>
           </Text>
         </View>
+
+        <TouchableOpacity onPress={() => router.push('/terms')}>
+          <Text style={{ textAlign: 'center', color: '#666', marginTop: 16 }}>
+            View Terms & Conditions
+          </Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );

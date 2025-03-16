@@ -179,6 +179,15 @@ const CreateAccountScreen = () => {
               Terms and Conditions
             </Text>
           </Text>
+          
+          <View style={styles.loginLinkContainer}>
+            <Text style={styles.loginText}>
+              Already have an account?{' '}
+              <Text style={styles.linkText} onPress={() => router.push('/login')}>
+                Log in
+              </Text>
+            </Text>
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -262,6 +271,15 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: 'red',
     borderWidth: 1,
+  },
+  loginLinkContainer: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  loginText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });
 
