@@ -162,7 +162,7 @@ router.post("/", authenticate_jwt, upload.single('audio'), async (req, res) => {
     console.log("Transcription:", transcription.substring(0, 100) + "...");
 
     // Step 2: Send transcription to LLM with session handling
-    const llmResponse = await axios.post(`http://localhost:5000/llm`, {
+    const llmResponse = await axios.post(`${process.env.NGROK_BASE_URL}/llm`, {
       message: transcription
     }, {
       headers: {
@@ -222,6 +222,7 @@ router.post("/", authenticate_jwt, upload.single('audio'), async (req, res) => {
 
 // Redirect session-related queries to LLM endpoint
 router.get("/sessions", (req, res) => {
+  console.log("hello");
   res.redirect(307, "/llm/sessions");
 });
 

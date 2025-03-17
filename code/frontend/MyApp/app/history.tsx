@@ -41,11 +41,16 @@ const HistoryScreen = () => {
       setIsLoading(true);
       const token = await AsyncStorage.getItem('authToken');
       if (!token) {
+        console.log('No auth token found, redirecting to login');
         router.replace('/login');
         return;
       }
 
-      const response = await axios.get(`${BACKEND_URL}/speech2speech/sessions`, {
+      // Log token length to help with debugging
+      console.log(`Auth token is ${token.length} characters long`);
+
+      // Updated endpoint to use /llm/sessions directly
+      const response = await axios.get(`${BACKEND_URL}/llm/sessions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -86,6 +91,21 @@ const HistoryScreen = () => {
       }
     } catch (error) {
       console.error('Error fetching chat history:', error);
+      
+      // Enhanced error logging
+      if (axios.isAxiosError(error) && error.response) {
+        console.error(`Status code: ${error.response.status}`);
+        console.error('Response data:', error.response.data);
+        
+        if (error.response.status === 401) {
+          await AsyncStorage.removeItem('authToken');
+          Alert.alert('Session Expired', 'Your session has expired. Please login again.', [
+            { text: 'OK', onPress: () => router.replace('/login') }
+          ]);
+          return;
+        }
+      }
+      
       Alert.alert('Error', 'Failed to load chat history');
     } finally {
       setIsLoading(false);
@@ -125,10 +145,15 @@ const HistoryScreen = () => {
       setIsDeleting(true);
       const token = await AsyncStorage.getItem('authToken');
       
-      // Delete each selected session
+      if (!token) {
+        router.replace('/login');
+        return;
+      }
+      
+      // Delete each selected session using the correct endpoint
       await Promise.all(
         selectedSessions.map(sessionId =>
-          axios.delete(`${BACKEND_URL}/speech2speech/sessions/${sessionId}`, {
+          axios.delete(`${BACKEND_URL}/llm/sessions/${sessionId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           })
         )

@@ -216,12 +216,15 @@ const Chat2Screen = () => {
         return;
       }
       
-      // Get chat history for this session
+      console.log(`Loading chat history for session ${sessionId}`);
+      
+      // Updated endpoint to use llm sessions history
       const response = await axios.get(
-        `${BACKEND_URL}/speech2speech/history/${sessionId}`,
+        `${BACKEND_URL}/llm/sessions/${sessionId}/history`,
         {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
         }
       );
@@ -240,6 +243,14 @@ const Chat2Screen = () => {
       }
     } catch (error) {
       console.error('Error loading chat history:', error);
+      
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        Alert.alert('Session Expired', 'Please login again', [
+          { text: 'OK', onPress: () => router.back() }
+        ]);
+        return;
+      }
+      
       Alert.alert('Error', 'Failed to load chat history');
     } finally {
       setIsLoading(false);
@@ -403,7 +414,7 @@ const Chat2Screen = () => {
       };
       
       if (currentSessionId) {
-        headers['Session-ID'] = currentSessionId;
+        headers['session-id'] = currentSessionId;
       }
       
       // Call speech2speech API
@@ -411,20 +422,25 @@ const Chat2Screen = () => {
         headers
       });
 
-      // Update session ID from response header
-      const newSessionId = response.headers['x-session-id'];
+      // Extract session ID from header or response data
+      const newSessionId = response.headers['x-session-id'] || response.data.sessionId;
       if (newSessionId) {
+        console.log(`Received session ID: ${newSessionId}`);
         setCurrentSessionId(newSessionId);
       }
 
-      // Process response data (JSON with userInput, llmResponse and audioBuffer)
+      // Process response data
       if (response.data && response.data.audioBuffer) {
         console.log("Received response from speech2speech API");
         
-        // Extract the user input (transcription) and LLM response from the response
-        const { userInput, llmResponse, audioBuffer } = response.data;
+        // Extract user input and LLM response
+        const { userInput, audioBuffer } = response.data;
+        // Get the actual LLM response text (it's nested in the response object)
+        const llmResponse = response.data.llmResponse?.response || 
+                            response.data.llmResponse || 
+                            "I processed your request";
         
-        // Generate a unique filename for this response using wav extension
+        // Generate a unique filename for this response
         const fileUri = `${FileSystem.documentDirectory}response_${Date.now()}.wav`;
         console.log("Saving audio to:", fileUri);
         
@@ -457,7 +473,7 @@ const Chat2Screen = () => {
         // Add AI response message to chat
         const aiMessage = {
           id: (Date.now() + 1).toString(),
-          text: llmResponse,
+          text: typeof llmResponse === 'string' ? llmResponse : JSON.stringify(llmResponse),
           sender: 'ai',
           timestamp: new Date().getTime() + 1000,
         };
@@ -478,6 +494,18 @@ const Chat2Screen = () => {
       }
     } catch (error) {
       console.error('Error processing speech to speech:', error);
+      
+      // More detailed error logging
+      if (axios.isAxiosError(error)) {
+        console.error('Response status:', error.response?.status);
+        console.error('Response data:', error.response?.data);
+        
+        if (error.response?.status === 401) {
+          Alert.alert('Session Expired', 'Please login again');
+          return;
+        }
+      }
+      
       Alert.alert('Error', 'Failed to process voice input. Please try again.');
     } finally {
       setIsLoading(false);
@@ -575,7 +603,7 @@ const Chat2Screen = () => {
       
       // Scroll to bottom after update
       setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
+        flatListRef.current?.scrollToEnd({ animated: false });
       }, 200);
     }
   };
@@ -583,16 +611,27 @@ const Chat2Screen = () => {
   const sendMessageToLLM = async (message: string) => {
     setIsLoading(true);
     try {
+      // Prepare headers with session ID if available
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+      
+      if (currentSessionId) {
+        headers['session-id'] = currentSessionId;
+      }
+      
       // Call LLM API with message
       const response = await axios.post(`${BACKEND_URL}/llm`, {
         message: message
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      }, { headers });
       
       const llmResponse = response.data.response;
+      
+      // Update session ID if returned
+      if (response.data.sessionId && !currentSessionId) {
+        setCurrentSessionId(response.data.sessionId);
+      }
       
       // Add AI response to chat
       const aiMessage = {
@@ -610,6 +649,18 @@ const Chat2Screen = () => {
       }
     } catch (error) {
       console.error('Error sending message to LLM:', error);
+      
+      // Enhanced error handling
+      if (axios.isAxiosError(error) && error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        
+        if (error.response.status === 401) {
+          Alert.alert('Session Expired', 'Please login again');
+          return;
+        }
+      }
+      
       // Add error message to chat
       const errorMessage = {
         id: (Date.now() + 1).toString(),

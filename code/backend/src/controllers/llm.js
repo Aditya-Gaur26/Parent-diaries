@@ -206,7 +206,8 @@ export const llm = async (req, res) => {
 // GET endpoint to list user's chat sessions
 export const getSessions = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user.id;
+    console.log("hi");
 
     const sessions = await ChatSession.find({ userId })
       .sort({ lastActive: -1 })

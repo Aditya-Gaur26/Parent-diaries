@@ -110,8 +110,12 @@ export default function HomeScreen() {
         return;
       }
 
-      console.log(`Making request to: ${BACKEND_URL}/speech2speech/sessions`);
-      const response = await axios.get(`${BACKEND_URL}/speech2speech/sessions`, {
+      // Log token length to help with debugging (don't log the full token for security)
+      console.log(`Auth token is ${token.length} characters long`);
+      
+      // Updated endpoint to use /llm/sessions directly instead of going through redirection
+      console.log(`Making request to: ${BACKEND_URL}/llm/sessions`);
+      const response = await axios.get(`${BACKEND_URL}/llm/sessions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -165,6 +169,26 @@ export default function HomeScreen() {
       }
     } catch (error) {
       console.error('Error fetching chat history:', error);
+      
+      // Enhanced error logging for 401 errors
+      if (axios.isAxiosError(error) && error.response) {
+        console.error(`Status code: ${error.response.status}`);
+        console.error('Response headers:', error.response.headers);
+        if (error.response.status === 401) {
+          console.error('Authentication error - token may be invalid or expired');
+          
+          // Clear token if it's invalid and redirect to login
+          if (error.response.data?.message === 'jwt expired' || 
+              error.response.data?.message === 'invalid token') {
+            await AsyncStorage.removeItem('authToken');
+            Alert.alert('Session Expired', 'Please login again', [
+              { text: 'OK', onPress: () => router.replace('/login') }
+            ]);
+            return;
+          }
+        }
+      }
+      
       Alert.alert('Error', 'Failed to load chat history');
       setChatHistory([]);
     } finally {
