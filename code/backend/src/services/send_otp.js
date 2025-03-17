@@ -16,28 +16,28 @@ export const sendOtp = function sendOTP(email, code) {
         let mailOptions = {
             from: process.env.SMTP_MAIL,
             to: email,
-            subject: 'Wave Diaries Account Verification',
+            subject: 'Parent Diaries Account Verification',
             text: `Dear User,
 
-Thank you for registering with Wave Diaries. 
+Thank you for registering with Parent Diaries. 
 
 Your OTP for account verification is: ${code}
 
 If you did not request this, please ignore this email.
 
 Best regards,
-The Wave Diaries Team`,
+The Parent Diaries Team`,
             html: `
                 <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
-                    <h2 style="text-align: center; color: #0056b3;">Wave Diaries Account Verification</h2>
+                    <h2 style="text-align: center; color: #0056b3;">Parent Diaries Account Verification</h2>
                     <p>Dear User,</p>
-                    <p>Thank you for registering with <strong>Wave Diaries</strong>. Please use the OTP code below to verify your account:</p>
+                    <p>Thank you for registering with <strong>Parent Diaries</strong>. Please use the OTP code below to verify your account:</p>
                     <div style="margin: 20px auto; padding: 15px; text-align: center; background-color: #f9f9f9; border: 1px solid #ddd; width: fit-content;">
                         <span style="font-size: 24px; letter-spacing: 2px;">${code}</span>
                     </div>
                     <p>If you did not request this verification, please disregard this email.</p>
                     <p>Best regards,<br>
-                    The Wave Diaries Team</p>
+                    The Parent Diaries Team</p>
                 </div>
             `
         };

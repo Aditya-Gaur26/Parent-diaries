@@ -10,6 +10,7 @@ import llm from './routes/llm.js';
 import asr from './routes/asr.js';
 import tts from './routes/tts.js';
 import speech2speech from './routes/speech2speech.js';
+import vaccination from './routes/vaccination.js';
 
 const app = express();
 
@@ -32,7 +33,7 @@ app.use('/asr',asr);
 app.use('/llm',llm);
 app.use('/tts',tts);
 app.use('/speech2speech',speech2speech);
-
+app.use('/vaccination',vaccination);
 
 
 

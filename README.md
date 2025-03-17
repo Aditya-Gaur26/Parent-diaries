@@ -1,4 +1,4 @@
-# Wave Diaries  
+# Parent Diaries  
 **Design and Analysis of Software Systems (DASS) — Spring 2025**  
 **Team 49**  
 
@@ -9,6 +9,6 @@
 - **Aditya Gaur** — *2023101052*  
 
 ## Description :
-Empathetic AI Audio Journalling Website, to help reduce distress for people having mental health issues.
+The problem that we are trying to solve is confusion, lack of clarity and of experience that new parents face, by helping them log the journey of their child and incorporate a conversational speech-to-speech platform using AI which can advice them on how to parent their child. This app intends to help parents make better decisions for the future of their child, and aid their child's better upbringing. It also aims to reduce stress and confusion that parents have. 
 
 I

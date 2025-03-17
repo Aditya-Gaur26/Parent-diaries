@@ -2,6 +2,34 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
+// Child schema embedded directly in User schema
+const ChildSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true
+  },
+  dateOfBirth: {
+    type: Date,
+    required: true
+  },
+  gender: {
+    type: String,
+    enum: ['Male', 'Female', 'Other'],
+    required: true
+  },
+  bloodGroup: {
+    type: String,
+    enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
+    default: null
+  },
+  medicalConditions: [{
+    type: String
+  }],
+  allergies: [{
+    type: String
+  }]
+}, { _id: true }); // Ensure each child gets an _id
+
 const UserSchema = new mongoose.Schema(
   {
     name: {
@@ -74,7 +102,9 @@ const UserSchema = new mongoose.Schema(
       type: String,
       enum: ['free', 'premium'],
       default: 'free'
-    }
+    },
+    // Add children array to User schema
+    children: [ChildSchema],
   },
   { timestamps: true }
 );
@@ -113,9 +143,16 @@ UserSchema.methods.matchPassword = async function (enteredPassword) {
 
 //  Generate JWT token
 UserSchema.methods.generateToken = function () {
-  return jwt.sign({ id: this._id, role: this.role }, process.env.JWT_SECRET, {
-    expiresIn: '7d',
-  });
+    const payload = {
+        id: this._id,
+        role: this.role || 'user',
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days
+    };
+    console.log('Token Payload:', payload);
+    const token = jwt.sign(payload, process.env.JWT_SECRET);
+    console.log('Generated Token:', token);
+    return token;
 };
 
 export default mongoose.model('User', UserSchema);
