@@ -1,29 +1,182 @@
 import OpenAI from "openai";
 import dotenv from "dotenv";
+import mongoose from "mongoose";
+import ChatSession from "../models/ChatSession.js";
+import ChatHistory from "../models/ChatHistory.js";
 
 dotenv.config();
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Helper function to get or create a chat session
+const getOrCreateChatSession = async (userId, sessionId) => {
+  try {
+    let session;
+
+    if (sessionId && mongoose.Types.ObjectId.isValid(sessionId)) {
+      // Get existing session
+      session = await ChatSession.findOne({
+        _id: sessionId,
+        userId: userId
+      });
+
+      if (session) {
+        // Update last active timestamp
+        session.lastActive = new Date();
+        await session.save();
+        console.log(`Using existing session: ${session._id}`);
+        return session;
+      }
+    }
+
+    // Create new session if no valid session was found
+    session = new ChatSession({
+      userId: userId,
+      title: "New Conversation"
+    });
+
+    await session.save();
+    console.log(`Created new session: ${session._id}`);
+
+    return session;
+  } catch (error) {
+    console.error("Error in getOrCreateChatSession:", error);
+    throw error;
+  }
+};
+
+// Helper function to get chat history for a session
+const getChatHistory = async (sessionId) => {
+  try {
+    let history = await ChatHistory.findOne({ sessionId });
+
+    if (!history) {
+      history = new ChatHistory({
+        sessionId,
+        messages: []
+      });
+      await history.save();
+    }
+
+    return history;
+  } catch (error) {
+    console.error("Error in getChatHistory:", error);
+    throw error;
+  }
+};
+
+// Helper function to add messages to chat history
+const addMessagesToHistory = async (sessionId, userMessage, assistantMessage) => {
+  try {
+    let history = await ChatHistory.findOne({ sessionId });
+
+    // Check if this is the first message (new conversation)
+    const isFirstMessage = !history || history.messages.length === 0;
+
+    if (!history) {
+      history = new ChatHistory({
+        sessionId,
+        messages: []
+      });
+    }
+
+    // Add user message
+    history.messages.push({
+      role: "user",
+      content: userMessage,
+      timestamp: new Date()
+    });
+
+    // Add assistant message
+    history.messages.push({
+      role: "assistant",
+      content: assistantMessage,
+      timestamp: new Date()
+    });
+
+    await history.save();
+    console.log(`Added messages to history for session ${sessionId}`);
+
+    // If this is the first message, update the session title with truncated message
+    if (isFirstMessage) {
+      // Truncate the message to a reasonable length for a title (max 50 chars)
+      const truncatedTitle = userMessage.length > 50
+        ? userMessage.substring(0, 47) + '...'
+        : userMessage;
+
+      // Update the session title
+      await ChatSession.findByIdAndUpdate(sessionId, {
+        title: truncatedTitle
+      });
+
+      console.log(`Updated session title to: ${truncatedTitle}`);
+    }
+  } catch (error) {
+    console.error("Error in addMessagesToHistory:", error);
+    throw error;
+  }
+};
+
 // POST endpoint to interact with OpenAI
 export const llm = async (req, res) => {
   try {
+    // Get user ID from request (set by auth middleware)
+    const userId = req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    // Get session ID from header
+    const requestSessionId = req.headers['session-id'];
+    console.log(`Request session ID: ${requestSessionId}`);
+
+    // Get or create session
+    const session = await getOrCreateChatSession(userId, requestSessionId);
+    const sessionId = session._id;
+    console.log(`Using session ID: ${sessionId}`);
+
     let messages = [];
+    let userMessage = "";
 
-    // Handle both formats:
-    // 1. Simple message format: { message: "Hello" }
-    // 2. Advanced messages array format: { messages: [{role: "user", content: "Hello"}, ...] }
-
+    // Handle input formats
     if (req.body.message) {
-      // Simple format - convert to messages array
-      messages = [{ role: "user", content: req.body.message }];
-    }
-    else if (req.body.messages && Array.isArray(req.body.messages)) {
-      // Advanced format - use the provided messages array
+      // Simple format - single message
+      messages = [{ role: "system", content: "You are a helpful AI assistant with memory of the conversation." }];
+      userMessage = req.body.message;
+
+      // Get chat history
+      const history = await getChatHistory(sessionId);
+
+      // Add up to last 10 messages from history to provide context
+      const recentMessages = history.messages.slice(-10);
+      recentMessages.forEach(msg => {
+        messages.push({
+          role: msg.role,
+          content: msg.content
+        });
+      });
+
+      // Add current user message
+      messages.push({ role: "user", content: userMessage });
+
+    } else if (req.body.messages && Array.isArray(req.body.messages)) {
+      // Advanced format - messages array
       messages = req.body.messages;
-    }
-    else {
+
+      // Extract user message (last user message in array)
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].role === "user") {
+          userMessage = messages[i].content;
+          break;
+        }
+      }
+
+      if (!userMessage) {
+        return res.status(400).json({ error: "No user message found in messages array" });
+      }
+    } else {
       return res.status(400).json({ error: "Message is required" });
     }
 
@@ -34,9 +187,15 @@ export const llm = async (req, res) => {
       store: true,
     });
 
-    // Send back the response
+    const assistantResponse = completion.choices[0].message.content;
+
+    // Save to chat history
+    await addMessagesToHistory(sessionId, userMessage, assistantResponse);
+
+    // Send back the response with session ID
     return res.status(200).json({
-      response: completion.choices[0].message.content,
+      response: assistantResponse,
+      sessionId: sessionId.toString()
     });
   } catch (error) {
     console.error("Error with OpenAI API:", error);
@@ -44,6 +203,92 @@ export const llm = async (req, res) => {
   }
 };
 
-export const test_llm = async (req,res)=>{
+// GET endpoint to list user's chat sessions
+export const getSessions = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const sessions = await ChatSession.find({ userId })
+      .sort({ lastActive: -1 })
+      .select('_id title createdAt lastActive');
+
+    return res.json(sessions);
+  } catch (error) {
+    console.error("Error fetching chat sessions:", error);
+    return res.status(500).json({
+      error: "An error occurred while fetching chat sessions",
+      details: error.message
+    });
+  }
+};
+
+// GET endpoint to retrieve conversation history for a session
+export const getSessionHistory = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { sessionId } = req.params;
+
+    // Verify the session belongs to this user
+    const session = await ChatSession.findOne({
+      _id: sessionId,
+      userId
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+
+    const history = await ChatHistory.findOne({ sessionId });
+
+    if (!history) {
+      return res.json({ messages: [] });
+    }
+
+    return res.json({
+      sessionId,
+      messages: history.messages
+    });
+  } catch (error) {
+    console.error("Error fetching chat history:", error);
+    return res.status(500).json({
+      error: "An error occurred while fetching chat history",
+      details: error.message
+    });
+  }
+};
+
+// DELETE endpoint to delete a session and its history
+export const deleteSession = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { sessionId } = req.params;
+
+    // Verify the session belongs to this user
+    const session = await ChatSession.findOne({
+      _id: sessionId,
+      userId
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+
+    // Delete the session and its history
+    await Promise.all([
+      ChatSession.deleteOne({ _id: sessionId }),
+      ChatHistory.deleteOne({ sessionId })
+    ]);
+
+    return res.json({ message: "Session deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting chat session:", error);
+    return res.status(500).json({
+      error: "An error occurred while deleting the chat session",
+      details: error.message
+    });
+  }
+};
+
+export const test_llm = async (req, res) => {
     res.status(200).json({ message: "LLM API is working" });
-}
+};

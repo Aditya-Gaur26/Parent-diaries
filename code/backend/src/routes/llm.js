@@ -1,14 +1,16 @@
-import { Router } from "express";
-import dotenv from "dotenv";
-import { llm, test_llm } from "../controllers/llm.js";
-import authenticate_jwt from "../middlewares/authenticate_jwt.js";
+import express from 'express';
+import { llm, test_llm, getSessions, getSessionHistory, deleteSession } from '../controllers/llm.js';
+import authenticate_jwt from '../middlewares/authenticate_jwt.js';
 
-dotenv.config();
-const router = Router();
-// POST endpoint to interact with OpenAI
-router.post("/", authenticate_jwt,llm);
+const router = express.Router();
 
-// GET endpoint for testing
-router.get("/test", test_llm);
+// LLM interaction endpoints
+router.post('/', authenticate_jwt, llm);
+router.get('/test', test_llm);
+
+// Session management endpoints
+router.get('/sessions', authenticate_jwt, getSessions);
+router.get('/sessions/:sessionId/history', authenticate_jwt, getSessionHistory);
+router.delete('/sessions/:sessionId', authenticate_jwt, deleteSession);
 
 export default router;
