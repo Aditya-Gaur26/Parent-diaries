@@ -59,23 +59,8 @@ const VaccinationPage = () => {
   const [showDosePicker, setShowDosePicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [vaccineSchedule, setVaccineSchedule] = useState<VaccinationSchedule[]>([]);
-
-  const diseases = [
-    'BCG',
-    'Hepatitis B',
-    'DPT',
-    'Polio',
-    'MMR',
-    'Chickenpox',
-    'Typhoid'
-  ];
-
-  const doseTypes = [
-    'First Dose',
-    'Second Dose',
-    'Third Dose',
-    'Booster'
-  ];
+  const [diseases, setDiseases] = useState([]);
+  const [doseTypes, setDoseTypes] = useState([]);
 
   useEffect(() => {
     fetchChildren();
@@ -86,6 +71,27 @@ const VaccinationPage = () => {
       fetchVaccinationSchedule();
     }
   }, [selectedChild]);
+
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        const response = await axios.get(
+          `${BACKEND_URL}/api/vaccination/metadata`,
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+        setDiseases(response.data.diseases);
+        setDoseTypes(response.data.doseTypes);
+      } catch (error) {
+        console.error('Error fetching vaccination metadata:', error);
+        Alert.alert('Error', 'Failed to fetch vaccination data');
+      }
+    };
+
+    fetchMetadata();
+  }, []);
 
   const isChildEligibleForVaccination = (dateOfBirth: string) => {
     const birthDate = new Date(dateOfBirth);
@@ -233,16 +239,20 @@ const VaccinationPage = () => {
       
       formData.append('childId', selectedChild._id);
       formData.append('disease', vaccinationData.disease);
-      formData.append('doseType', vaccinationData.doseType);
+      formData.append('doseType', DoseType[vaccinationData.doseType as keyof typeof DoseType]); // Convert to proper enum value
       formData.append('actualDate', vaccinationData.date.toISOString());
 
       const response = await axios.post(
         `${BACKEND_URL}/api/vaccination/manage`,
-        formData,
+        {
+          childId: selectedChild._id,
+          disease: vaccinationData.disease,
+          doseType: DoseType[vaccinationData.doseType as keyof typeof DoseType], // Convert to proper enum value
+          actualDate: vaccinationData.date.toISOString()
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data',
           }
         }
       );
@@ -315,14 +325,14 @@ const VaccinationPage = () => {
         <Text style={styles.modalTitle}>Select Disease</Text>
         {diseases.map((disease) => (
           <TouchableOpacity
-            key={disease}
+            key={disease.name}
             style={styles.modalItem}
             onPress={() => {
-              setVaccinationData({ ...vaccinationData, disease });
+              setVaccinationData({ ...vaccinationData, disease: disease.name });
               setShowDiseasePicker(false);
             }}
           >
-            <Text style={styles.modalItemText}>{disease}</Text>
+            <Text style={styles.modalItemText}>{disease.name}</Text>
           </TouchableOpacity>
         ))}
       </View>
