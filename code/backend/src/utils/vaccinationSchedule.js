@@ -1,7 +1,7 @@
 import { DoseType } from '../models/Vaccination.js';
 
 // Add minimum intervals between doses
-const minimumIntervals = {
+export const minimumIntervals = {
   'Hepatitis B': {
     FIRST_TO_SECOND: 1, // 1 month between 1st and 2nd dose
     SECOND_TO_THIRD: 5  // 5 months between 2nd and 3rd dose
