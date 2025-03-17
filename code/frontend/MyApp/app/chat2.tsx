@@ -152,9 +152,9 @@ const Chat2Screen = () => {
         allowsRecordingIOS: forRecording, // Critical for iOS recording
         playsInSilentModeIOS: true,
         staysActiveInBackground: true,
-        interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DUCK_OTHERS,
+        // interruptionModeIOS: Audio.InterruptionModeIOS.DuckOthers,
         shouldDuckAndroid: true,
-        interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DUCK_OTHERS,
+        // interruptionModeAndroid: Audio.InterruptionModeAndroid.DuckOthers,
         playThroughEarpieceAndroid: false,
       });
     } catch (error) {

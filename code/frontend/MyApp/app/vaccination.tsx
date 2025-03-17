@@ -42,8 +42,317 @@ interface VaccinationSchedule {
 
 const VACCINATION_AGE_LIMIT = 6; // 6 years
 
-const VaccinationPage = () => {
+const getDaysUntil = (date: string): number => {
+  const today = new Date();
+  const targetDate = new Date(date);
+  const diffTime = targetDate.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return Math.max(0, diffDays);
+};
+
+const ScheduleTab = ({ vaccineSchedule, selectedChild }: { 
+  vaccineSchedule: VaccinationSchedule[], 
+  selectedChild: Child | null
+}) => {
+  if (!selectedChild || vaccineSchedule.length === 0) {
+    return (
+      <View style={styles.emptyStateContainer}>
+        <Text style={styles.emptyStateText}>No vaccination records found</Text>
+      </View>
+    );
+  }
+
+  const today = new Date();
+  const upcomingVaccinations = vaccineSchedule.filter(v => 
+    v.status === 'PENDING' && new Date(v.expectedDate) > today
+  );
+  const pastVaccinations = vaccineSchedule.filter(v => 
+    v.status === 'COMPLETED' || new Date(v.expectedDate) <= today
+  );
+
+  return (
+    <ScrollView style={styles.tabContent}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Upcoming Vaccinations</Text>
+      </View>
+      {upcomingVaccinations.map((vaccine, index) => (
+        <View key={index} style={styles.vaccineCard}>
+          <View style={styles.vaccineHeader}>
+            <Text style={styles.vaccineName}>{vaccine.disease}</Text>
+            <Text style={styles.dueDate}>
+              Due: {new Date(vaccine.expectedDate).toLocaleDateString()}
+            </Text>
+          </View>
+          <View style={styles.vaccineDetails}>
+            <Text style={styles.doseType}>{vaccine.doseType}</Text>
+            <Text style={styles.timeLeft}>
+              {getDaysUntil(vaccine.expectedDate)} days remaining
+            </Text>
+          </View>
+          <View style={[styles.statusIndicator, styles.statusPending]}>
+            <Text style={styles.statusText}>PENDING</Text>
+          </View>
+        </View>
+      ))}
+
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Vaccination History</Text>
+      </View>
+      {pastVaccinations.map((vaccine, index) => (
+        <View key={index} style={[styles.vaccineCard, vaccine.status === 'COMPLETED' && styles.completedCard]}>
+          <View style={styles.vaccineHeader}>
+            <Text style={styles.vaccineName}>{vaccine.disease}</Text>
+            <Text style={styles.completionDate}>
+              {vaccine.actualDate ? 
+                `Given: ${new Date(vaccine.actualDate).toLocaleDateString()}` :
+                `Expected: ${new Date(vaccine.expectedDate).toLocaleDateString()}`
+              }
+            </Text>
+          </View>
+          <View style={styles.vaccineDetails}>
+            <Text style={styles.doseType}>{vaccine.doseType}</Text>
+          </View>
+          <View style={[styles.statusIndicator, 
+            vaccine.status === 'COMPLETED' ? styles.statusCompleted : styles.statusOverdue]}>
+            <Text style={styles.statusText}>{vaccine.status}</Text>
+          </View>
+        </View>
+      ))}
+    </ScrollView>
+  );
+};
+
+const LogVaccinationTab = ({
+  selectedChild,
+  handleLogVaccination,
+  loading,
+  vaccinationData,
+  setVaccinationData,
+  prescription,
+  setPrescription,
+  showDiseasePicker,
+  showDosePicker,
+  showDatePicker,
+  setShowDiseasePicker,
+  setShowDosePicker,
+  setShowDatePicker
+}: {
+  selectedChild: Child | null;
+  handleLogVaccination: () => Promise<void>;
+  loading: boolean;
+  vaccinationData: any;
+  setVaccinationData: (data: any) => void;
+  prescription: any;
+  setPrescription: (data: any) => void;
+  showDiseasePicker: boolean;
+  showDosePicker: boolean;
+  showDatePicker: boolean;
+  setShowDiseasePicker: (show: boolean) => void;
+  setShowDosePicker: (show: boolean) => void;
+  setShowDatePicker: (show: boolean) => void;
+}) => {
+  const handlePrescriptionUpload = async () => {
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        quality: 0.8,
+      });
+      
+      if (!result.didCancel && result.assets && result.assets[0]) {
+        setPrescription(result.assets[0]);
+      }
+    } catch (error) {
+      console.error('Error uploading prescription:', error);
+      Alert.alert('Error', 'Failed to upload prescription');
+    }
+  };
+
+  return (
+    <ScrollView style={styles.tabContent}>
+      <View style={styles.formContainer}>
+        {/* Disease Selection */}
+        <View style={styles.formField}>
+          <Text style={styles.fieldLabel}>Vaccine Type</Text>
+          <TouchableOpacity 
+            style={styles.fieldInput}
+            onPress={() => setShowDiseasePicker(true)}
+          >
+            <Text>{vaccinationData.disease || 'Select vaccine'}</Text>
+            <Ionicons name="chevron-down" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Dose Selection */}
+        <View style={styles.formField}>
+          <Text style={styles.fieldLabel}>Dose</Text>
+          <TouchableOpacity 
+            style={styles.fieldInput}
+            onPress={() => setShowDosePicker(true)}
+          >
+            <Text>{vaccinationData.doseType || 'Select dose'}</Text>
+            <Ionicons name="chevron-down" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Date Selection */}
+        <View style={styles.formField}>
+          <Text style={styles.fieldLabel}>Date Given</Text>
+          <TouchableOpacity 
+            style={styles.fieldInput}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text>{vaccinationData.date?.toLocaleDateString() || 'Select date'}</Text>
+            <Ionicons name="calendar" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Prescription Upload */}
+        <View style={styles.prescriptionUpload}>
+          <Text style={styles.fieldLabel}>Upload Prescription</Text>
+          <TouchableOpacity 
+            style={styles.uploadBox}
+            onPress={handlePrescriptionUpload}
+          >
+            {prescription ? (
+              <Image 
+                source={{ uri: prescription.uri }} 
+                style={styles.prescriptionPreview}
+              />
+            ) : (
+              <View style={styles.uploadPlaceholder}>
+                <Ionicons name="cloud-upload" size={32} color="#666" />
+                <Text style={styles.uploadText}>Upload Prescription</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity 
+          style={[
+            styles.submitButton, 
+            (!selectedChild || !vaccinationData.disease || !vaccinationData.doseType) && 
+            styles.submitButtonDisabled
+          ]}
+          onPress={handleLogVaccination}
+          disabled={!selectedChild || !vaccinationData.disease || !vaccinationData.doseType || loading}
+        >
+          <Text style={styles.submitButtonText}>
+            {loading ? 'Submitting...' : 'Log Vaccination'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+};
+
+const UploadPrescriptionTab = ({ selectedChild }) => {
+  const [scanning, setScanning] = useState(false);
+  const [extractedData, setExtractedData] = useState(null);
+  const [prescriptionImage, setPrescriptionImage] = useState(null);
+
+  const handlePrescriptionUpload = async () => {
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        quality: 0.8,
+      });
+      
+      if (!result.didCancel && result.assets && result.assets[0]) {
+        setPrescriptionImage(result.assets[0]);
+        processPrescription(result.assets[0]);
+      }
+    } catch (error) {
+      console.error('Error selecting image:', error);
+      Alert.alert('Error', 'Failed to select image');
+    }
+  };
+
+  const processPrescription = async (image) => {
+    if (!selectedChild) {
+      Alert.alert('Error', 'Please select a child first');
+      return;
+    }
+
+    try {
+      setScanning(true);
+      const formData = new FormData();
+      formData.append('prescription', {
+        uri: image.uri,
+        type: 'image/jpeg',
+        name: 'prescription.jpg'
+      });
+      formData.append('childId', selectedChild._id);
+
+      // In a real app, this would be the actual OCR endpoint
+      const response = await axios.post(
+        `${BACKEND_URL}/api/vaccination/scan-prescription`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+
+      setExtractedData(response.data);
+    } catch (error) {
+      console.error('Error processing prescription:', error);
+      Alert.alert('Error', 'Failed to process prescription');
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  return (
+    <View style={styles.tabContent}>
+      <Text style={styles.uploadTitle}>Upload Vaccination Prescription</Text>
+      <Text style={styles.uploadDescription}>
+        Take a photo of your child's vaccination prescription to automatically extract details.
+      </Text>
+      
+      <TouchableOpacity 
+        style={styles.prescriptionUploadBox}
+        onPress={handlePrescriptionUpload}
+      >
+        {prescriptionImage ? (
+          <Image 
+            source={{ uri: prescriptionImage.uri }} 
+            style={styles.prescriptionImage}
+            resizeMode="contain"
+          />
+        ) : (
+          <View style={styles.uploadPlaceholder}>
+            <Ionicons name="camera" size={40} color="#666" />
+            <Text style={styles.uploadPlaceholderText}>Tap to upload</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+      
+      {scanning && (
+        <View style={styles.scanningOverlay}>
+          <ActivityIndicator size="large" color="#4A90E2" />
+          <Text style={styles.scanningText}>Processing prescription...</Text>
+        </View>
+      )}
+      
+      {extractedData && (
+        <View style={styles.extractedDataContainer}>
+          <Text style={styles.extractedDataTitle}>Extracted Information</Text>
+          <View style={styles.extractedDataContent}>
+            {Object.entries(extractedData).map(([key, value], index) => (
+              <Text key={index} style={styles.extractedDataItem}>
+                {key}: {value}
+              </Text>
+            ))}
+            <TouchableOpacity style={styles.confirmButton}>
+              <Text style={styles.confirmButtonText}>Confirm and Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const MainContent = () => {
   const router = useRouter();
+  const [selectedTab, setSelectedTab] = useState('schedule');
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
   const [children, setChildren] = useState<Child[]>([]);
   const [loading, setLoading] = useState(false);
@@ -138,7 +447,7 @@ const VaccinationPage = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await axios.get(
-        `${BACKEND_URL}/api/vaccination/child/${selectedChild?._id}`,
+        `${BACKEND_URL}/vaccination/child/${selectedChild?._id}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -398,133 +707,88 @@ const VaccinationPage = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="black" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>VACCINATION</Text>
-        </View>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="black" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Vaccination Tracker</Text>
+      </View>
 
-        <View style={styles.card}>
-          {children.length > 0 ? (
-            <View style={styles.childSelector}>
-              <Text style={styles.inputLabel}>Select Child (0-6 years)</Text>
-              <TouchableOpacity 
-                style={styles.dropdown}
-                onPress={() => setShowChildPicker(true)}
-              >
-                <Text>
-                  {selectedChild ? 
-                    `${selectedChild.name} (${((new Date().getTime() - new Date(selectedChild.dateOfBirth).getTime()) / 
-                    (1000 * 60 * 60 * 24 * 365.25)).toFixed(1)} years)` : 
-                    'Select a child'
-                  }
-                </Text>
-                <Ionicons name="chevron-down" size={20} color="black" />
-              </TouchableOpacity>
-            </View>
+      <View style={styles.childSelector}>
+        <Text style={styles.selectorLabel}>Select Child (0-6 years)</Text>
+        <TouchableOpacity 
+          style={styles.selectorButton}
+          onPress={() => setShowChildPicker(true)}
+        >
+          {selectedChild ? (
+            <Text style={styles.selectedChildText}>
+              {selectedChild.name} ({((new Date().getTime() - new Date(selectedChild.dateOfBirth).getTime()) / 
+              (1000 * 60 * 60 * 24 * 365.25)).toFixed(1)} years)
+            </Text>
           ) : (
-            <View style={styles.noChildContainer}>
-              <Text style={styles.noChildrenText}>No children eligible for vaccination</Text>
-              <TouchableOpacity 
-                style={styles.addChildButton}
-                onPress={() => router.push('/manage-children')}
-              >
-                <Text style={styles.addChildButtonText}>Add Child</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.placeholderText}>Select a child</Text>
           )}
+          <Ionicons name="chevron-down" size={20} color="#333" />
+        </TouchableOpacity>
+      </View>
 
-          <View style={styles.dateContainer}>
-            <Text style={styles.dateLabel}>DATE</Text>
-            <Text style={styles.dateValue}>March 15,2025</Text>
-          </View>
-
-          <View style={styles.formContainer}>
-            {loading && (
-              <ActivityIndicator size="large" color="#000" style={styles.loader} />
-            )}
-            {/* Disease Dropdown */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Disease</Text>
-              <TouchableOpacity 
-                style={styles.dropdown}
-                onPress={() => setShowDiseasePicker(true)}
-              >
-                <Text>{vaccinationData.disease || 'Select disease'}</Text>
-                <Ionicons name="chevron-down" size={20} color="black" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Dose Dropdown */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Dose</Text>
-              <TouchableOpacity 
-                style={styles.dropdown}
-                onPress={() => setShowDosePicker(true)}
-              >
-                <Text>{vaccinationData.doseType}</Text>
-                <Ionicons name="chevron-down" size={20} color="black" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Expected Date Dropdown */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Expected Date</Text>
-              <TouchableOpacity 
-                style={styles.dropdown}
-              >
-                <Text>{vaccinationData.date.toDateString()}</Text>
-                <Ionicons name="chevron-down" size={20} color="black" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Upload Prescription */}
-            <View style={styles.uploadContainer}>
-              <Text style={styles.uploadText}>Upload Prescription</Text>
-              <TouchableOpacity 
-                style={styles.uploadBox}
-                onPress={handleUploadPrescription}
-              >
-                {prescription ? (
-                  <Image 
-                    source={{ uri: prescription.uri }} 
-                    style={styles.previewImage}
-                  />
-                ) : (
-                  <View style={styles.illustrationContainer}>
-                    <Image 
-                      source={require('@/assets/images/upload-icon.png')}
-                      style={styles.illustration}
-                      resizeMode="contain"
-                    />
-                    <Text style={styles.uploadInstructions}>
-                      Tap to upload prescription
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity 
-              style={[
-                styles.submitButton,
-                (!selectedChild || !vaccinationData.disease || !vaccinationData.doseType) && 
-                styles.submitButtonDisabled
-              ]}
-              onPress={handleSubmit}
-              disabled={!selectedChild || !vaccinationData.disease || !vaccinationData.doseType || loading}
-            >
-              <Text style={styles.submitButtonText}>
-                {loading ? 'Submitting...' : 'Submit'}
-              </Text>
-            </TouchableOpacity>
-
-            {selectedChild && renderVaccinationSchedule()}
-          </View>
+      <View style={styles.tabContainer}>
+        <View style={styles.tabButtons}>
+          <TouchableOpacity 
+            style={[styles.tabButton, selectedTab === 'schedule' && styles.activeTabButton]}
+            onPress={() => setSelectedTab('schedule')}
+          >
+            <Text style={[styles.tabText, selectedTab === 'schedule' && styles.activeTabText]}>
+              Schedule
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tabButton, selectedTab === 'log' && styles.activeTabButton]}
+            onPress={() => setSelectedTab('log')}
+          >
+            <Text style={[styles.tabText, selectedTab === 'log' && styles.activeTabText]}>
+              Log Vaccine
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tabButton, selectedTab === 'upload' && styles.activeTabButton]}
+            onPress={() => setSelectedTab('upload')}
+          >
+            <Text style={[styles.tabText, selectedTab === 'upload' && styles.activeTabText]}>
+              Upload
+            </Text>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
+
+        <View style={styles.tabContentContainer}>
+          {selectedTab === 'schedule' && (
+            <ScheduleTab 
+              vaccineSchedule={vaccineSchedule}
+              selectedChild={selectedChild}
+            />
+          )}
+          {selectedTab === 'log' && (
+            <LogVaccinationTab
+              selectedChild={selectedChild}
+              handleLogVaccination={handleLogVaccination}
+              loading={loading}
+              vaccinationData={vaccinationData}
+              setVaccinationData={setVaccinationData}
+              prescription={prescription}
+              setPrescription={setPrescription}
+              showDiseasePicker={showDiseasePicker}
+              showDosePicker={showDosePicker}
+              showDatePicker={showDatePicker}
+              setShowDiseasePicker={setShowDiseasePicker}
+              setShowDosePicker={setShowDosePicker}
+              setShowDatePicker={setShowDatePicker}
+            />
+          )}
+          {selectedTab === 'upload' && (
+            <UploadPrescriptionTab selectedChild={selectedChild} />
+          )}
+        </View>
+      </View>
 
       {renderChildPickerModal()}
       {renderDiseasePickerModal()}
@@ -792,6 +1056,221 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  vaccineCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  completedCard: {
+    opacity: 0.8,
+  },
+  vaccineHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  vaccineName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  dueDate: {
+    fontSize: 14,
+    color: '#666',
+  },
+  statusIndicator: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
+  statusPending: {
+    backgroundColor: '#FFF3E0',
+  },
+  statusCompleted: {
+    backgroundColor: '#E8F5E9',
+  },
+  statusOverdue: {
+    backgroundColor: '#FFEBEE',
+  },
+  tabContainer: {
+    flex: 1,
+  },
+  tabButtons: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  activeTabButton: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#4A90E2',
+  },
+  tabText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  activeTabText: {
+    color: '#4A90E2',
+    fontWeight: '600',
+  },
+  tabContent: {
+    flex: 1,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  formField: {
+    marginBottom: 20,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  fieldInput: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+  },
+  prescriptionUpload: {
+    marginVertical: 20,
+  },
+  prescriptionPreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+  },
+  uploadPlaceholder: {
+    alignItems: 'center',
+    padding: 32,
+  },
+  tabContentContainer: {
+    flex: 1,
+  },
+  selectorLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  selectorButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f8f8f8',
+    padding: 12,
+    borderRadius: 8,
+  },
+  selectedChildText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  placeholderText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  prescriptionUploadBox: {
+    borderWidth: 2,
+    borderColor: '#00BFA5',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 20,
+    overflow: 'hidden',
+  },
+  prescriptionImage: {
+    width: '100%',
+    height: '100%',
+  },
+  uploadPlaceholderText: {
+    marginTop: 12,
+    color: '#666',
+    fontSize: 16,
+  },
+  scanningOverlay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8f8f8',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  scanningText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#333',
+  },
+  uploadTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  uploadDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 16,
+  },
+  extractedDataContainer: {
+    backgroundColor: '#f8f8f8',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+  },
+  extractedDataTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  extractedDataContent: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
+  },
+  extractedDataItem: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 8,
+  },
+  confirmButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+  },
 });
 
-export default VaccinationPage;
+export default MainContent;
