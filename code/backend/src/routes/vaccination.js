@@ -1,7 +1,6 @@
 import express from 'express';
 import authenticate_jwt from '../middlewares/authenticate_jwt.js';
-import { getChildVaccinations, manageVaccination } from '../controllers/vaccination.js';
-
+import { getChildVaccinations, manageVaccination, getVaccinationMetadata } from '../controllers/vaccination.js';
 
 const router = express.Router();
 
@@ -14,5 +13,10 @@ router.post('/manage', authenticate_jwt, manageVaccination);
 // @desc    Get all vaccination records and schedule for a child
 // @access  Private (Parents only)
 router.get('/child/:childId', authenticate_jwt, getChildVaccinations);
+
+// @route   GET /api/vaccination/metadata
+// @desc    Get list of diseases and dose types
+// @access  Private
+router.get('/metadata', authenticate_jwt, getVaccinationMetadata);
 
 export default router;

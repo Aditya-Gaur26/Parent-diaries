@@ -1,4 +1,4 @@
-import{ minimumIntervals } from '../utils/vaccinationSchedule.js'
+import{ minimumIntervals, vaccineSchedule } from '../utils/vaccinationSchedule.js'
 import Vaccination from '../models/Vaccination.js';
 import { DoseType } from '../models/Vaccination.js';
 import User from '../models/User.js';
@@ -170,6 +170,24 @@ export const getChildVaccinations = async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching vaccination records:', err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
+export const getVaccinationMetadata = async (req, res) => {
+  try {
+    const diseases = vaccineSchedule.map(vaccine => ({
+      name: vaccine.disease,
+      // isOptional: vaccine.isOptional,
+    }));
+    const doseTypes = Object.values(DoseType);
+    
+    res.json({
+      diseases,
+      doseTypes
+    });
+  } catch (err) {
+    console.error('Error fetching vaccination metadata:', err.message);
     res.status(500).send('Server Error');
   }
 };
