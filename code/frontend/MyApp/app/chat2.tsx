@@ -21,8 +21,8 @@ import axios from 'axios';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BACKEND_URL } from '../config/environment';
-// Import Markdown rendering library
 import Markdown from 'react-native-markdown-display';
+import { useLocalSearchParams } from 'expo-router';
 
 const arrayBufferToBase64 = (arrayBuffer: ArrayBuffer): string => {
   const uint8Array = new Uint8Array(arrayBuffer);
@@ -123,6 +123,8 @@ const SiriWaveView = ({ isActive, amplitude = 0 }: { isActive: boolean; amplitud
 
 const Chat2Screen = () => {
   const router = useRouter();
+  const { sessionId } = useLocalSearchParams();
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
   interface Message {
     id: string;
@@ -151,7 +153,7 @@ const Chat2Screen = () => {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: forRecording, // Critical for iOS recording
         playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
+        // staysActiveInBackground: true,
         // interruptionModeIOS: Audio.InterruptionModeIOS.DuckOthers,
         shouldDuckAndroid: true,
         // interruptionModeAndroid: Audio.InterruptionModeAndroid.DuckOthers,
@@ -197,6 +199,52 @@ const Chat2Screen = () => {
       clearAnimationInterval();
     };
   }, []);
+
+  useEffect(() => {
+    if (sessionId) {
+      loadChatHistory(sessionId as string);
+    }
+  }, [sessionId]);
+
+  const loadChatHistory = async (sessionId: string) => {
+    try {
+      setIsLoading(true);
+      const token = await AsyncStorage.getItem('authToken');
+      
+      if (!token) {
+        console.log('No auth token found');
+        return;
+      }
+      
+      // Get chat history for this session
+      const response = await axios.get(
+        `${BACKEND_URL}/speech2speech/history/${sessionId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      // Process messages for display
+      if (response.data && response.data.messages) {
+        const historyMessages: Message[] = response.data.messages.map((msg, index) => ({
+          id: `hist-${index}`,
+          text: msg.content,
+          sender: msg.role === 'user' ? 'user' : 'ai',
+          timestamp: new Date(msg.timestamp).getTime()
+        }));
+        
+        setMessages(historyMessages);
+        setCurrentSessionId(sessionId);
+      }
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+      Alert.alert('Error', 'Failed to load chat history');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const clearAnimationInterval = () => {
     if (animationIntervalRef.current) {
@@ -348,52 +396,85 @@ const Chat2Screen = () => {
 
       console.log("Sending audio to speech2speech API...");
       
-      // Call speech2speech API directly with responseType 'arraybuffer' instead of blob
+      // Add headers to include session ID if available
+      const headers: Record<string, string> = {
+        'Content-Type': 'multipart/form-data',
+        'Authorization': `Bearer ${token}`
+      };
+      
+      if (currentSessionId) {
+        headers['Session-ID'] = currentSessionId;
+      }
+      
+      // Call speech2speech API
       const response = await axios.post(`${BACKEND_URL}/speech2speech`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}`
-        },
-        responseType: 'arraybuffer'
+        headers
       });
 
-      // Process audio data (binary array instead of blob)
-      if (response.data) {
+      // Update session ID from response header
+      const newSessionId = response.headers['x-session-id'];
+      if (newSessionId) {
+        setCurrentSessionId(newSessionId);
+      }
+
+      // Process response data (JSON with userInput, llmResponse and audioBuffer)
+      if (response.data && response.data.audioBuffer) {
         console.log("Received response from speech2speech API");
         
-        // Convert array buffer to base64
-        const base64data = arrayBufferToBase64(response.data);
+        // Extract the user input (transcription) and LLM response from the response
+        const { userInput, llmResponse, audioBuffer } = response.data;
         
-        // Generate a unique filename for this response
-        const fileUri = `${FileSystem.cacheDirectory}response_${Date.now()}.mp3`;
+        // Generate a unique filename for this response using wav extension
+        const fileUri = `${FileSystem.documentDirectory}response_${Date.now()}.wav`;
         console.log("Saving audio to:", fileUri);
         
-        // Write the audio data to a file
-        await FileSystem.writeAsStringAsync(fileUri, base64data, {
-          encoding: FileSystem.EncodingType.Base64
-        });
+        try {
+          // Write the audio data to a file - audioBuffer is already base64 encoded
+          await FileSystem.writeAsStringAsync(fileUri, audioBuffer, {
+            encoding: FileSystem.EncodingType.Base64
+          });
+          
+          // Verify file was written successfully
+          const fileInfo = await FileSystem.getInfoAsync(fileUri);
+          if (!fileInfo.exists || fileInfo.size < 100) {
+            throw new Error(`Audio file not saved properly: ${fileInfo.size} bytes`);
+          }
+          
+          console.log(`Audio file saved successfully, size: ${fileInfo.size} bytes`);
+        } catch (fileError) {
+          console.error("Error saving audio file:", fileError);
+          throw new Error(`Failed to save audio: ${fileError.message}`);
+        }
         
-        // Add messages to chat
+        // Add user message to chat
         const userMessage = {
           id: Date.now().toString(),
-          text: "Voice message sent",
+          text: userInput,
           sender: 'user',
           timestamp: new Date().getTime(),
         };
         
+        // Add AI response message to chat
         const aiMessage = {
           id: (Date.now() + 1).toString(),
-          text: "Voice response received",
+          text: llmResponse,
           sender: 'ai',
           timestamp: new Date().getTime() + 1000,
         };
         
+        // Update messages state with both messages
         setMessages(prevMessages => [...prevMessages, userMessage, aiMessage]);
+        
+        // Scroll to bottom after adding messages
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 200);
         
         // Play audio response
         await playAudioResponse(fileUri);
       } else {
-        throw new Error("Empty response received from API");
+        console.error("Invalid response format:", response.data);
+        throw new Error("Invalid response format from speech2speech API");
       }
     } catch (error) {
       console.error('Error processing speech to speech:', error);
@@ -415,45 +496,63 @@ const Chat2Screen = () => {
       }
       
       console.log(`Audio file exists, size: ${fileInfo.size} bytes`);
-
+      
       // Unload any existing sound
       if (sound.current) {
         console.log("Unloading previous sound");
-        await sound.current.unloadAsync();
+        try {
+          await sound.current.unloadAsync();
+        } catch (unloadError) {
+          console.warn("Error unloading previous sound:", unloadError);
+        }
         sound.current = null;
       }
       
       // Configure audio mode for playback
       await configureAudioMode(false);
       
-      // Load and play new sound with increased volume
-      console.log("Creating new sound object");
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: audioUri },
-        { shouldPlay: true, volume: 1.0, progressUpdateIntervalMillis: 100 }
-      );
-      
-      sound.current = newSound;
-      
-      console.log("Setting playback status callback");
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded) {
-          if (status.didJustFinish) {
-            console.log("Audio playback finished");
-            // Cleanup when finished playing
-            newSound.unloadAsync();
-          }
-        } else {
-          if (status.error) {
+      try {
+        // Create and load the sound object first without auto-playing
+        const soundObject = new Audio.Sound();
+        await soundObject.loadAsync({ uri: audioUri });
+        
+        // Set playback status callback before playing
+        soundObject.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded) {
+            if (status.didJustFinish) {
+              console.log("Audio playback finished");
+              // Cleanup when finished playing
+              soundObject.unloadAsync().catch(e => console.warn("Error unloading sound:", e));
+            }
+          } else if (status.error) {
             console.error(`Playback error: ${status.error}`);
+            Alert.alert('Playback Error', `Unable to play audio: ${status.error}`);
           }
-        }
-      });
-      
-      console.log("Audio playback started");
+        });
+        
+        // Store the sound object reference
+        sound.current = soundObject;
+        
+        // Now start playing with volume ramped up
+        console.log("Starting audio playback");
+        await soundObject.setVolumeAsync(1.0);
+        await soundObject.playAsync();
+        console.log("Audio playback started successfully");
+      } catch (audioError) {
+        console.error("Error creating or playing sound:", audioError);
+        
+        // Fall back to native device Speech API
+        Speech.speak("I'm sorry, I couldn't play the audio response. Let me try again.", {
+          language: 'en',
+          pitch: 1.0,
+          rate: 0.9
+        });
+        
+        throw audioError;
+      }
     } catch (error) {
       console.error('Error playing audio response:', error);
-      Alert.alert('Playback Error', 'Unable to play the audio response.');
+      Alert.alert('Playback Error', 'Unable to play the audio response. Try again or restart the app.');
     }
   };
 

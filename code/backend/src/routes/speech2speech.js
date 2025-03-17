@@ -153,7 +153,7 @@ const transcribeAudio = async (audioPath, authToken) => {
     formData.append('audio', fs.createReadStream(audioPath));
 
     // Make request to local ASR endpoint with authorization header
-    const response = await axios.post(`http://localhost:5000/asr`, formData, {
+    const response = await axios.post(`${process.env.NGROK_BASE_URL}/asr`, formData, {
       headers: {
         ...formData.getHeaders(),
         'Authorization': `Bearer ${authToken}`
@@ -193,7 +193,7 @@ const generateResponse = async (transcription, authToken, sessionId) => {
     messages.push({ role: "user", content: transcription });
 
     // Call LLM with conversation history
-    const response = await axios.post(`http://localhost:5000/llm`, {
+    const response = await axios.post(`${process.env.NGROK_BASE_URL}/llm`, {
       messages: messages
     }, {
       headers: {
@@ -213,7 +213,7 @@ const textToSpeech = async (text, voice, authToken) => {
   console.log(`Converting text to speech with voice: ${voice}`);
 
   try {
-    const response = await axios.post(`http://localhost:5000/tts`, {
+    const response = await axios.post(`${process.env.NGROK_BASE_URL}/tts`, {
       text,
       voice
     }, {
@@ -283,13 +283,18 @@ router.post("/", authenticate_jwt, upload.single('audio'), async (req, res) => {
       console.error(`Error deleting original file: ${error.message}`);
     }
 
-    // Step 5: Return audio response with session ID
-    res.setHeader("Content-Type", "audio/mpeg");
-    res.setHeader("Content-Length", audioBuffer.length);
-    res.setHeader("Content-Disposition", `attachment; filename="speech_response.mp3"`);
+    // Step 5: Return audio response with session ID and text response
+    res.setHeader("Content-Type", "application/json");
     res.setHeader("X-Session-Id", sessionId.toString());
 
-    return res.send(audioBuffer);
+    // Convert audioBuffer to base64 string for JSON response
+    const base64Audio = audioBuffer.toString('base64');
+    
+    return res.json({
+      userInput : transcription,
+      llmResponse: llmResponse,
+      audioBuffer: base64Audio
+    });
   } catch (error) {
     console.error("Error in speech-to-speech processing:", error);
 

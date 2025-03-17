@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Alert, BackHandler } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Alert, BackHandler, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,12 +8,22 @@ import { BACKEND_URL } from '../config/environment';
 
 export default function HomeScreen() {
   const router = useRouter();
+  interface ChatHistoryItem {
+    id: string;
+    question: string;
+    subtitle: string;
+    timestamp: Date;
+  }
+
   const [user, setUser] = useState({ name: 'User', email: '', avatar: null });
   const [isLoading, setIsLoading] = useState(true);
+  const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   
-  // Fetch user profile when component mounts
+  // Fetch user profile and chat history when component mounts
   useEffect(() => {
     fetchUserProfile();
+    fetchChatSessions();
   }, []);
 
   const fetchUserProfile = async () => {
@@ -78,25 +88,88 @@ export default function HomeScreen() {
       setIsLoading(false);
     }
   };
-  
-  const recentQuestions = [
-    {
-      id: 1,
-      question: 'My son just spoke for the first time',
-      subtitle: 'How should I react?',
-    },
-    {
-      id: 2,
-      question: 'My son just turned 1 year old',
-      subtitle: 'What should I gift him?',
-    },
-    {
-      id: 3,
-      question: 'My daughter demands a phone',
-      subtitle: 'How should I respond?',
-    },
-  ];
 
+  const fetchChatSessions = async () => {
+    try {
+      setIsHistoryLoading(true);
+      console.log('Fetching chat sessions...');
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        console.log('No auth token found');
+        setIsHistoryLoading(false);
+        return;
+      }
+
+      console.log(`Making request to: ${BACKEND_URL}/speech2speech/sessions`);
+      const response = await axios.get(`${BACKEND_URL}/speech2speech/sessions`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Response received:', response.data);
+
+      if (response.data && Array.isArray(response.data)) {
+        // Get the 4 most recent chat sessions
+        const recentSessions = response.data.slice(0, 4);
+        console.log('Recent sessions:', recentSessions);
+        
+        if (recentSessions.length > 0) {
+          // Process sessions directly without fetching individual histories
+          const processedSessions = recentSessions.map(session => {
+            // Format the title with fallback
+            const title = session.title || 'Chat session';
+            
+            // Create a timestamp from lastActive or createdAt
+            const timestamp = new Date(session.lastActive || session.createdAt);
+            
+            // Format date for display
+            const formattedDate = timestamp.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            
+            return {
+              id: session._id,
+              question: title,
+              subtitle: formattedDate,
+              timestamp: timestamp
+            };
+          });
+          
+          // Sort by timestamp (newest first)
+          processedSessions.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+          console.log('Processed sessions:', processedSessions);
+          
+          setChatHistory(processedSessions);
+        } else {
+          console.log('No recent sessions found');
+          setChatHistory([]);
+        }
+      } else {
+        console.log('Invalid response format:', response.data);
+        setChatHistory([]);
+      }
+    } catch (error) {
+      console.error('Error fetching chat history:', error);
+      Alert.alert('Error', 'Failed to load chat history');
+      setChatHistory([]);
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
+  
+  // Navigate to chat with specific session ID
+  const navigateToChat = (sessionId) => {
+    router.push({
+      pathname: '/chat2',
+      params: { sessionId }
+    });
+  };
+  
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
@@ -177,20 +250,37 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Recent questions */}
+          {/* Recent questions - now using actual chat history */}
           <View style={styles.recentQuestionsContainer}>
-            {recentQuestions.map(item => (
-              <TouchableOpacity key={item.id} style={styles.questionItem}>
-                <View style={styles.questionIconContainer}>
-                  <MaterialIcons name="history" size={20} color="#555" />
-                </View>
-                <View style={styles.questionTextContainer}>
-                  <Text style={styles.questionText}>{item.question}</Text>
-                  <Text style={styles.questionSubtitle}>{item.subtitle}</Text>
-                </View>
-                <Feather name="chevron-right" size={20} color="#888" />
-              </TouchableOpacity>
-            ))}
+            {isHistoryLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#4A90E2" />
+                <Text style={styles.loadingText}>Loading history...</Text>
+              </View>
+            ) : chatHistory.length === 0 ? (
+              <Text style={styles.noHistoryText}>No chat history yet</Text>
+            ) : (
+              chatHistory.map(item => (
+                <TouchableOpacity 
+                  key={item.id} 
+                  style={styles.questionItem}
+                  onPress={() => navigateToChat(item.id)}
+                >
+                  <View style={styles.questionIconContainer}>
+                    <MaterialIcons name="history" size={20} color="#555" />
+                  </View>
+                  <View style={styles.questionTextContainer}>
+                    <Text style={styles.questionText} numberOfLines={1}>
+                      {item.question}
+                    </Text>
+                    <Text style={styles.questionSubtitle} numberOfLines={1}>
+                      {item.subtitle}
+                    </Text>
+                  </View>
+                  <Feather name="chevron-right" size={20} color="#888" />
+                </TouchableOpacity>
+              ))
+            )}
           </View>
         </View>
       </ScrollView>
@@ -317,5 +407,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#888',
     marginTop: 2,
+  },
+  noHistoryText: {
+    textAlign: 'center',
+    color: '#888',
+    paddingVertical: 16,
+    fontStyle: 'italic',
+  },
+  loadingContainer: {
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  loadingText: {
+    marginLeft: 10,
+    color: '#666',
+    fontStyle: 'italic',
   },
 });
