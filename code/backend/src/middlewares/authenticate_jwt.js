@@ -9,7 +9,7 @@ const authenticate_jwt = async (req, res, next) => {
     // console.log("Authentication HEader",req.header)
     const authHeader = req.headers.authorization;
     
-    console.log("Auth Header:", authHeader);
+    // console.log("Auth Header:", authHeader);
     // console.log("Request headers:", req.headers);
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ message: "No token provided" });
@@ -24,17 +24,13 @@ const authenticate_jwt = async (req, res, next) => {
             return res.status(500).json({ message: "Server configuration error" });
         }
         
-        // Add more detailed debugging
-        // console.log("Original JWT_SECRET:", process.env.JWT_SECRET);
-        console.log("JWT_SECRET length:", process.env.JWT_SECRET.length);
-        
-        try {
-            const tokenParts = token.split('.');
-            console.log("Token header:", Buffer.from(tokenParts[0], 'base64').toString());
-            console.log("Token payload:", Buffer.from(tokenParts[1], 'base64').toString());
-        } catch (e) {
-            console.error("Error decoding token parts:", e);
-        }
+        // try {
+        //     const tokenParts = token.split('.');
+        //     console.log("Token header:", Buffer.from(tokenParts[0], 'base64').toString());
+        //     console.log("Token payload:", Buffer.from(tokenParts[1], 'base64').toString());
+        // } catch (e) {
+        //     console.error("Error decoding token parts:", e);
+        // }
         
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
@@ -43,7 +39,7 @@ const authenticate_jwt = async (req, res, next) => {
             return res.status(401).json({ message: "Token verification failed" });
         }
         
-        console.log("Decoded token:", JSON.stringify(decoded, null, 2));
+        // console.log("Decoded token:", JSON.stringify(decoded, null, 2));
         req.user = await User.findById(decoded.id).select("-password");
 
         if (!req.user) {

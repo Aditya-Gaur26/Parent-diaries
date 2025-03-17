@@ -141,18 +141,10 @@ UserSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-//  Generate JWT token
 UserSchema.methods.generateToken = function () {
-    const payload = {
-        id: this._id,
-        role: this.role || 'user',
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days
-    };
-    console.log('Token Payload:', payload);
-    const token = jwt.sign(payload, process.env.JWT_SECRET);
-    console.log('Generated Token:', token);
-    return token;
+  return jwt.sign({ id: this._id, role: this.role }, process.env.JWT_SECRET, {
+    expiresIn: '7d',
+  });
 };
 
 export default mongoose.model('User', UserSchema);

@@ -39,6 +39,16 @@ passport.use(
         // but we're preparing code to handle them if they were
         const mobileNumber = profile._json?.phoneNumber || null;
         const dob = profile._json?.birthday || null;
+
+        // Create default child
+        const defaultChild = {
+          name: 'Default Child',
+          dateOfBirth: new Date(),  // Current date as placeholder
+          gender: 'Other',  // Default gender
+          bloodGroup: null,
+          medicalConditions: [],
+          allergies: []
+        };
         
         if (!user) {
           // Create new user if doesn't exist
@@ -50,7 +60,8 @@ passport.use(
             mobile_number: mobileNumber,
             dob: dob,
             isVerified: true,
-            subscriptionType: 'free' // Set default subscription type
+            subscriptionType: 'free', // Set default subscription type
+            children : [defaultChild]
           }).save();
           
           // Create a default subscription for the new Google user

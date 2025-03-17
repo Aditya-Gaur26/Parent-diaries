@@ -143,13 +143,27 @@ export default function HomeScreen() {
         <View style={styles.optionsContainer}>
           <TouchableOpacity 
             style={styles.optionCard} 
-            onPress={() => router.push('/voice-chat')}>
+            onPress={() => router.push('/growth-tracker')}>
             <View style={styles.optionContent}>
               <Image
                 source={require('@/assets/images/parent_child_image.jpg')}
                 style={styles.optionImage}
               />
-              <Text style={styles.optionText}>Talk with Companion </Text>
+              <Text style={styles.optionText}>Growth Tracker</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.optionsContainer}>
+          <TouchableOpacity 
+            style={styles.optionCard} 
+            onPress={() => router.push('/manage-children')}>
+            <View style={styles.optionContent}>
+              <Image
+                source={require('@/assets/images/family-icon.png')}
+                style={styles.optionImage}
+              />
+              <Text style={styles.optionText}>Manage Children</Text>
             </View>
           </TouchableOpacity>
         </View>

@@ -11,109 +11,419 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../context/AuthContext'; // Add this import
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import { launchImageLibrary } from 'react-native-image-picker';
+import axios from 'axios';
+import { BACKEND_URL } from '../config/environment';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import Modal from 'react-native-modal';
+
+interface Child {
+  _id: string;
+  name: string;
+  dateOfBirth: string;
+}
+
+interface VaccinationRecord {
+  disease: string;
+  doseType: string;
+  expectedDate: string;
+  status: string;
+}
+
+interface VaccinationSchedule {
+  disease: string;
+  doseType: string;
+  expectedDate: string;
+  status: 'PENDING' | 'COMPLETED';
+  actualDate?: string;
+}
+
+const VACCINATION_AGE_LIMIT = 6; // 6 years
 
 const VaccinationPage = () => {
-  const { user } = useAuth(); // Add this line
-  const [disease, setDisease] = useState('');
-  const [dose, setDose] = useState('');
-  const [expectedDate, setExpectedDate] = useState('');
+  const router = useRouter();
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
+  const [children, setChildren] = useState<Child[]>([]);
   const [loading, setLoading] = useState(false);
-  const [vaccinationChart, setVaccinationChart] = useState(null);
-  const [selectedChild, setSelectedChild] = useState(null);
+  const [prescription, setPrescription] = useState<any>(null);
+  const [vaccinationRecords, setVaccinationRecords] = useState<VaccinationRecord[]>([]);
+  const [vaccinationData, setVaccinationData] = useState({
+    disease: '',
+    doseType: '',
+    date: new Date(),
+  });
+  const [showChildPicker, setShowChildPicker] = useState(false);
+  const [showDiseasePicker, setShowDiseasePicker] = useState(false);
+  const [showDosePicker, setShowDosePicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [vaccineSchedule, setVaccineSchedule] = useState<VaccinationSchedule[]>([]);
+
+  const diseases = [
+    'BCG',
+    'Hepatitis B',
+    'DPT',
+    'Polio',
+    'MMR',
+    'Chickenpox',
+    'Typhoid'
+  ];
+
+  const doseTypes = [
+    'First Dose',
+    'Second Dose',
+    'Third Dose',
+    'Booster'
+  ];
 
   useEffect(() => {
-    if (user?.children?.length > 0) {
-      setSelectedChild(user.children[0]);
-    }
-  }, [user]);
+    fetchChildren();
+  }, []);
 
   useEffect(() => {
-    if (selectedChild?._id) {
-      fetchVaccinationChart();
+    if (selectedChild) {
+      fetchVaccinationSchedule();
     }
   }, [selectedChild]);
 
-  const fetchVaccinationChart = async () => {
+  const isChildEligibleForVaccination = (dateOfBirth: string) => {
+    const birthDate = new Date(dateOfBirth);
+    const today = new Date();
+    const ageInYears = (today.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+    return ageInYears <= VACCINATION_AGE_LIMIT;
+  };
+
+  const fetchChildren = async () => {
     try {
-      setLoading(true);
-      if (!selectedChild) {
-        throw new Error('Selected child is null');
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        router.replace('/login');
+        return;
       }
-      const response = await fetch(`http://localhost:4444/vaccination/child/${selectedChild._id}`);
-      const data = await response.json();
-      setVaccinationChart(data.completeSchedule);
+
+      const response = await axios.get(`${BACKEND_URL}/api/users/children`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Filter children based on vaccination age
+      const eligibleChildren = response.data.children.filter(
+        (child: Child) => isChildEligibleForVaccination(child.dateOfBirth)
+      );
+
+      if (eligibleChildren.length === 0) {
+        Alert.alert(
+          'No Eligible Children',
+          'No children within vaccination age (0-6 years) found.'
+        );
+      }
+
+      setChildren(eligibleChildren);
+      if (eligibleChildren.length > 0) {
+        setSelectedChild(eligibleChildren[0]);
+      }
     } catch (error) {
-      Alert.alert('Error', 'Failed to fetch vaccination chart');
-      console.error(error);
-    } finally {
-      setLoading(false);
+      console.error('Error fetching children:', error);
+      Alert.alert('Error', 'Failed to fetch children data');
+    }
+  };
+
+  const fetchVaccinationSchedule = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await axios.get(
+        `${BACKEND_URL}/api/vaccination/child/${selectedChild?._id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      setVaccineSchedule(response.data.completeSchedule);
+    } catch (error) {
+      console.error('Error fetching vaccination schedule:', error);
+      Alert.alert('Error', 'Failed to fetch vaccination schedule');
+    }
+  };
+
+  const handleUploadPrescription = async () => {
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        quality: 0.8,
+      });
+      
+      if (!result.didCancel && result.assets && result.assets[0]) {
+        setPrescription(result.assets[0]);
+      }
+    } catch (error) {
+      console.error('Error uploading prescription:', error);
+      Alert.alert('Error', 'Failed to upload prescription');
     }
   };
 
   const handleSubmit = async () => {
-    if (!disease || !dose) {
-      Alert.alert('Error', 'Please select disease and dose');
+    if (!selectedChild || !vaccinationData.disease || !vaccinationData.doseType) {
+      Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
     try {
       setLoading(true);
-      const childId = selectedChild._id; // This should come from your app's state/navigation
-      const response = await fetch('http://localhost:4444/vaccination/manage', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          childId,
-          disease,
-          doseType: dose,
-          actualDate: new Date().toISOString(),
-        }),
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        setVaccinationChart(data.completeSchedule);
-        Alert.alert('Success', 'Vaccination record updated');
-      } else {
-        Alert.alert('Error', data.msg || 'Failed to update vaccination');
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        router.replace('/login');
+        return;
       }
+
+      const formData = new FormData();
+      
+      if (prescription) {
+        formData.append('prescription', {
+          uri: prescription.uri,
+          type: 'image/jpeg',
+          name: prescription.fileName || 'prescription.jpg',
+        });
+      }
+      
+      formData.append('childId', selectedChild._id);
+      formData.append('disease', vaccinationData.disease);
+      formData.append('doseType', vaccinationData.doseType);
+      formData.append('date', vaccinationData.date.toISOString());
+
+      const response = await axios.post(
+        `${BACKEND_URL}/api/vaccinations`, 
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          }
+        }
+      );
+
+      // Update vaccination records after successful submission
+      setVaccinationRecords(response.data.vaccinations || []);
+      Alert.alert('Success', 'Vaccination record added successfully');
+      router.back();
     } catch (error) {
+      console.error('Error submitting vaccination:', error);
       Alert.alert('Error', 'Failed to submit vaccination record');
-      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleLogVaccination = async () => {
+    if (!selectedChild || !vaccinationData.disease || !vaccinationData.doseType) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = await AsyncStorage.getItem('authToken');
+      const formData = new FormData();
+      
+      if (prescription) {
+        formData.append('prescription', {
+          uri: prescription.uri,
+          type: 'image/jpeg',
+          name: prescription.fileName || 'prescription.jpg',
+        });
+      }
+      
+      formData.append('childId', selectedChild._id);
+      formData.append('disease', vaccinationData.disease);
+      formData.append('doseType', vaccinationData.doseType);
+      formData.append('actualDate', vaccinationData.date.toISOString());
+
+      const response = await axios.post(
+        `${BACKEND_URL}/api/vaccination/manage`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          }
+        }
+      );
+
+      setVaccineSchedule(response.data.completeSchedule);
+      Alert.alert('Success', 'Vaccination logged successfully');
+      
+      // Reset form
+      setVaccinationData({
+        disease: '',
+        doseType: '',
+        date: new Date(),
+      });
+      setPrescription(null);
+      
+    } catch (error: any) {
+      console.error('Error logging vaccination:', error);
+      if (error.response?.data?.msg) {
+        Alert.alert('Error', error.response.data.msg);
+      } else {
+        Alert.alert('Error', 'Failed to log vaccination');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderChildPickerModal = () => (
+    <Modal
+      isVisible={showChildPicker}
+      onBackdropPress={() => setShowChildPicker(false)}
+      style={styles.modal}
+    >
+      <View style={styles.modalContent}>
+        <Text style={styles.modalTitle}>Select Child</Text>
+        {children.length === 0 ? (
+          <Text style={styles.noChildText}>No children eligible for vaccination</Text>
+        ) : (
+          children.map((child) => {
+            const age = ((new Date().getTime() - new Date(child.dateOfBirth).getTime()) / 
+              (1000 * 60 * 60 * 24 * 365.25)).toFixed(1);
+            
+            return (
+              <TouchableOpacity
+                key={child._id}
+                style={styles.modalItem}
+                onPress={() => {
+                  setSelectedChild(child);
+                  setShowChildPicker(false);
+                }}
+              >
+                <Text style={styles.modalItemText}>
+                  {child.name} ({age} years)
+                </Text>
+              </TouchableOpacity>
+            );
+          })
+        )}
+      </View>
+    </Modal>
+  );
+
+  const renderDiseasePickerModal = () => (
+    <Modal
+      isVisible={showDiseasePicker}
+      onBackdropPress={() => setShowDiseasePicker(false)}
+      style={styles.modal}
+    >
+      <View style={styles.modalContent}>
+        <Text style={styles.modalTitle}>Select Disease</Text>
+        {diseases.map((disease) => (
+          <TouchableOpacity
+            key={disease}
+            style={styles.modalItem}
+            onPress={() => {
+              setVaccinationData({ ...vaccinationData, disease });
+              setShowDiseasePicker(false);
+            }}
+          >
+            <Text style={styles.modalItemText}>{disease}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </Modal>
+  );
+
+  const renderDosePickerModal = () => (
+    <Modal
+      isVisible={showDosePicker}
+      onBackdropPress={() => setShowDosePicker(false)}
+      style={styles.modal}
+    >
+      <View style={styles.modalContent}>
+        <Text style={styles.modalTitle}>Select Dose</Text>
+        {doseTypes.map((dose) => (
+          <TouchableOpacity
+            key={dose}
+            style={styles.modalItem}
+            onPress={() => {
+              setVaccinationData({ ...vaccinationData, doseType: dose });
+              setShowDosePicker(false);
+            }}
+          >
+            <Text style={styles.modalItemText}>{dose}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </Modal>
+  );
+
+  const renderVaccinationSchedule = () => (
+    <View style={styles.scheduleContainer}>
+      <Text style={styles.scheduleTitle}>Vaccination Schedule</Text>
+      {vaccineSchedule.map((vaccine, index) => (
+        <View key={index} style={styles.scheduleItem}>
+          <View style={styles.scheduleInfo}>
+            <Text style={styles.scheduleDisease}>{vaccine.disease}</Text>
+            <Text style={styles.scheduleDose}>{vaccine.doseType}</Text>
+            <Text style={styles.scheduleDate}>
+              Expected: {new Date(vaccine.expectedDate).toLocaleDateString()}
+            </Text>
+            {vaccine.actualDate && (
+              <Text style={styles.scheduleDate}>
+                Given: {new Date(vaccine.actualDate).toLocaleDateString()}
+              </Text>
+            )}
+          </View>
+          <View style={[
+            styles.scheduleStatus,
+            { backgroundColor: vaccine.status === 'COMPLETED' ? '#E8F5E9' : '#FFF3E0' }
+          ]}>
+            <Text style={[
+              styles.scheduleStatusText,
+              { color: vaccine.status === 'COMPLETED' ? '#2E7D32' : '#E65100' }
+            ]}>
+              {vaccine.status}
+            </Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="black" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>VACCINATION</Text>
         </View>
 
         <View style={styles.card}>
-          {user?.children?.length > 0 ? (
+          {children.length > 0 ? (
             <View style={styles.childSelector}>
-              <Text style={styles.inputLabel}>Select Child</Text>
+              <Text style={styles.inputLabel}>Select Child (0-6 years)</Text>
               <TouchableOpacity 
                 style={styles.dropdown}
-                onPress={() => {
-                  // Implement child selection modal/picker here
-                }}
+                onPress={() => setShowChildPicker(true)}
               >
-                <Text>{selectedChild?.name || 'Select a child'}</Text>
+                <Text>
+                  {selectedChild ? 
+                    `${selectedChild.name} (${((new Date().getTime() - new Date(selectedChild.dateOfBirth).getTime()) / 
+                    (1000 * 60 * 60 * 24 * 365.25)).toFixed(1)} years)` : 
+                    'Select a child'
+                  }
+                </Text>
                 <Ionicons name="chevron-down" size={20} color="black" />
               </TouchableOpacity>
             </View>
           ) : (
-            <Text style={styles.noChildrenText}>Please add a child first</Text>
+            <View style={styles.noChildContainer}>
+              <Text style={styles.noChildrenText}>No children eligible for vaccination</Text>
+              <TouchableOpacity 
+                style={styles.addChildButton}
+                onPress={() => router.push('/manage-children')}
+              >
+                <Text style={styles.addChildButtonText}>Add Child</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           <View style={styles.dateContainer}>
@@ -128,17 +438,23 @@ const VaccinationPage = () => {
             {/* Disease Dropdown */}
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Disease</Text>
-              <TouchableOpacity style={styles.dropdown}>
-                <Text>{disease}</Text>
-                <Ionicons name="chevron-up" size={20} color="black" />
+              <TouchableOpacity 
+                style={styles.dropdown}
+                onPress={() => setShowDiseasePicker(true)}
+              >
+                <Text>{vaccinationData.disease || 'Select disease'}</Text>
+                <Ionicons name="chevron-down" size={20} color="black" />
               </TouchableOpacity>
             </View>
 
             {/* Dose Dropdown */}
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Dose</Text>
-              <TouchableOpacity style={styles.dropdown}>
-                <Text>{dose}</Text>
+              <TouchableOpacity 
+                style={styles.dropdown}
+                onPress={() => setShowDosePicker(true)}
+              >
+                <Text>{vaccinationData.doseType}</Text>
                 <Ionicons name="chevron-down" size={20} color="black" />
               </TouchableOpacity>
             </View>
@@ -146,8 +462,10 @@ const VaccinationPage = () => {
             {/* Expected Date Dropdown */}
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Expected Date</Text>
-              <TouchableOpacity style={styles.dropdown}>
-                <Text>{expectedDate}</Text>
+              <TouchableOpacity 
+                style={styles.dropdown}
+              >
+                <Text>{vaccinationData.date.toDateString()}</Text>
                 <Ionicons name="chevron-down" size={20} color="black" />
               </TouchableOpacity>
             </View>
@@ -155,38 +473,66 @@ const VaccinationPage = () => {
             {/* Upload Prescription */}
             <View style={styles.uploadContainer}>
               <Text style={styles.uploadText}>Upload Prescription</Text>
-              <View style={styles.illustrationContainer}>
-                <Image 
-                  source={{ uri: 'https://i.imgur.com/KRWCMfP.png' }} 
-                  style={styles.illustration}
-                  resizeMode="contain"
-                />
-              </View>
+              <TouchableOpacity 
+                style={styles.uploadBox}
+                onPress={handleUploadPrescription}
+              >
+                {prescription ? (
+                  <Image 
+                    source={{ uri: prescription.uri }} 
+                    style={styles.previewImage}
+                  />
+                ) : (
+                  <View style={styles.illustrationContainer}>
+                    <Image 
+                      source={require('@/assets/images/upload-icon.png')}
+                      style={styles.illustration}
+                      resizeMode="contain"
+                    />
+                    <Text style={styles.uploadInstructions}>
+                      Tap to upload prescription
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
             </View>
 
             <TouchableOpacity 
-              style={styles.submitButton} 
+              style={[
+                styles.submitButton,
+                (!selectedChild || !vaccinationData.disease || !vaccinationData.doseType) && 
+                styles.submitButtonDisabled
+              ]}
               onPress={handleSubmit}
-              disabled={loading}
+              disabled={!selectedChild || !vaccinationData.disease || !vaccinationData.doseType || loading}
             >
-              <Text style={styles.submitButtonText}>Submit</Text>
+              <Text style={styles.submitButtonText}>
+                {loading ? 'Submitting...' : 'Submit'}
+              </Text>
             </TouchableOpacity>
 
-            {vaccinationChart && (
-              <View style={styles.chartContainer}>
-                <Text style={styles.chartTitle}>Vaccination Schedule</Text>
-                {vaccinationChart.map((item, index) => (
-                  <View key={index} style={styles.chartItem}>
-                    <Text>{item.disease} - {item.doseType}</Text>
-                    <Text>Expected: {new Date(item.expectedDate).toLocaleDateString()}</Text>
-                    <Text>Status: {item.status}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
+            {selectedChild && renderVaccinationSchedule()}
           </View>
         </View>
       </ScrollView>
+
+      {renderChildPickerModal()}
+      {renderDiseasePickerModal()}
+      {renderDosePickerModal()}
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={vaccinationData.date}
+          mode="date"
+          display="default"
+          onChange={(event, selectedDate) => {
+            setShowDatePicker(false);
+            if (selectedDate) {
+              setVaccinationData({ ...vaccinationData, date: selectedDate });
+            }
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -307,6 +653,134 @@ const styles = StyleSheet.create({
     padding: 16,
     textAlign: 'center',
     color: 'red',
+  },
+  previewImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: 8,
+  },
+  uploadBox: {
+    borderWidth: 2,
+    borderColor: '#00BFA5',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+  },
+  uploadInstructions: {
+    marginTop: 8,
+    color: '#666',
+    fontSize: 14,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#cccccc',
+  },
+  recordText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  dateText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  modal: {
+    margin: 0,
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#333',
+  },
+  modalItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  modalItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  noChildContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  noChildText: {
+    fontSize: 16,
+    color: '#666',
+    fontStyle: 'italic',
+    marginBottom: 16,
+  },
+  addChildButton: {
+    backgroundColor: '#4A90E2',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  addChildButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  scheduleContainer: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  scheduleTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  scheduleItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  scheduleInfo: {
+    flex: 1,
+  },
+  scheduleDisease: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  scheduleDose: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  scheduleDate: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
+  },
+  scheduleStatus: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  scheduleStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
 
