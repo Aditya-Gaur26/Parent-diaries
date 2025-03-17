@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Alert, BackHandler, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -10,7 +10,7 @@ export default function HomeScreen() {
   const router = useRouter();
   interface ChatHistoryItem {
     id: string;
-    question: string;
+    title: string; // Changed from 'question' to 'title' for semantic clarity
     subtitle: string;
     timestamp: Date;
   }
@@ -20,11 +20,21 @@ export default function HomeScreen() {
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   
-  // Fetch user profile and chat history when component mounts
+  // Fetch user profile only once when component mounts
   useEffect(() => {
     fetchUserProfile();
-    fetchChatSessions();
   }, []);
+
+  // Use useFocusEffect to refresh chat sessions whenever screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('HomeScreen focused, refreshing chat sessions...');
+      fetchChatSessions();
+      return () => {
+        // Optional cleanup if needed
+      };
+    }, [])
+  );
 
   const fetchUserProfile = async () => {
     try {
@@ -134,7 +144,7 @@ export default function HomeScreen() {
             
             return {
               id: session._id,
-              question: title,
+              title: title, // Store as title instead of question
               subtitle: formattedDate,
               timestamp: timestamp
             };
@@ -271,7 +281,7 @@ export default function HomeScreen() {
                   </View>
                   <View style={styles.questionTextContainer}>
                     <Text style={styles.questionText} numberOfLines={1}>
-                      {item.question}
+                      {item.title} {/* Changed from item.question to item.title */}
                     </Text>
                     <Text style={styles.questionSubtitle} numberOfLines={1}>
                       {item.subtitle}

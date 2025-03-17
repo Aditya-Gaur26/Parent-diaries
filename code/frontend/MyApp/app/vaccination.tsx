@@ -19,6 +19,15 @@ import { BACKEND_URL } from '../config/environment';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Modal from 'react-native-modal';
 
+// Correct enum declaration based on backend model
+enum DoseType {
+  FIRST = 'FIRST',
+  SECOND = 'SECOND',
+  THIRD = 'THIRD',
+  BOOSTER = 'BOOSTER',
+  ANNUAL = 'ANNUAL'
+}
+
 interface Child {
   _id: string;
   name: string;
@@ -128,8 +137,6 @@ const LogVaccinationTab = ({
   loading,
   vaccinationData,
   setVaccinationData,
-  prescription,
-  setPrescription,
   showDiseasePicker,
   showDosePicker,
   showDatePicker,
@@ -142,8 +149,6 @@ const LogVaccinationTab = ({
   loading: boolean;
   vaccinationData: any;
   setVaccinationData: (data: any) => void;
-  prescription: any;
-  setPrescription: (data: any) => void;
   showDiseasePicker: boolean;
   showDosePicker: boolean;
   showDatePicker: boolean;
@@ -151,22 +156,6 @@ const LogVaccinationTab = ({
   setShowDosePicker: (show: boolean) => void;
   setShowDatePicker: (show: boolean) => void;
 }) => {
-  const handlePrescriptionUpload = async () => {
-    try {
-      const result = await launchImageLibrary({
-        mediaType: 'photo',
-        quality: 0.8,
-      });
-      
-      if (!result.didCancel && result.assets && result.assets[0]) {
-        setPrescription(result.assets[0]);
-      }
-    } catch (error) {
-      console.error('Error uploading prescription:', error);
-      Alert.alert('Error', 'Failed to upload prescription');
-    }
-  };
-
   return (
     <ScrollView style={styles.tabContent}>
       <View style={styles.formContainer}>
@@ -203,28 +192,6 @@ const LogVaccinationTab = ({
           >
             <Text>{vaccinationData.date?.toLocaleDateString() || 'Select date'}</Text>
             <Ionicons name="calendar" size={20} color="#666" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Prescription Upload */}
-        <View style={styles.prescriptionUpload}>
-          <Text style={styles.fieldLabel}>Upload Prescription</Text>
-          <TouchableOpacity 
-            style={styles.uploadBox}
-            onPress={handlePrescriptionUpload}
-          >
-            {prescription ? (
-              <Image 
-                source={{ uri: prescription.uri }} 
-                
-                style={styles.prescriptionPreview}
-              />
-            ) : (
-              <View style={styles.uploadPlaceholder}>
-                <Ionicons name="cloud-upload" size={32} color="#666" />
-                <Text style={styles.uploadText}>Upload Prescription</Text>
-              </View>
-            )}
           </TouchableOpacity>
         </View>
 
@@ -286,7 +253,7 @@ const UploadPrescriptionTab = ({ selectedChild }) => {
 
       // In a real app, this would be the actual OCR endpoint
       const response = await axios.post(
-        `${BACKEND_URL}/api/vaccination/scan-prescription`,
+        `${BACKEND_URL}/vaccination/scan-prescription`,
         formData,
         { headers: { 'Content-Type': 'multipart/form-data' } }
       );
@@ -387,7 +354,7 @@ const MainContent = () => {
       try {
         const token = await AsyncStorage.getItem('authToken');
         const response = await axios.get(
-          `${BACKEND_URL}/api/vaccination/metadata`,
+          `${BACKEND_URL}/vaccination/metadata`, // Fix URL path to match backend
           {
             headers: { Authorization: `Bearer ${token}` }
           }
@@ -448,7 +415,7 @@ const MainContent = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await axios.get(
-        `${BACKEND_URL}/vaccination/child/${selectedChild?._id}`,
+        `${BACKEND_URL}/vaccination/child/${selectedChild?._id}`, // Fix URL path to match backend
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -506,7 +473,7 @@ const MainContent = () => {
       formData.append('date', vaccinationData.date.toISOString());
 
       const response = await axios.post(
-        `${BACKEND_URL}/api/vaccinations`, 
+        `${BACKEND_URL}/vaccinations`, 
         formData,
         {
           headers: {
@@ -553,16 +520,17 @@ const MainContent = () => {
       formData.append('actualDate', vaccinationData.date.toISOString());
 
       const response = await axios.post(
-        `${BACKEND_URL}/api/vaccination/manage`,
+        `${BACKEND_URL}/vaccination/manage`,
         {
           childId: selectedChild._id,
           disease: vaccinationData.disease,
-          doseType: DoseType[vaccinationData.doseType as keyof typeof DoseType], // Convert to proper enum value
+          doseType: vaccinationData.doseType, // Send the dose type directly without enum conversion
           actualDate: vaccinationData.date.toISOString()
         },
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
         }
       );
@@ -775,8 +743,6 @@ const MainContent = () => {
               loading={loading}
               vaccinationData={vaccinationData}
               setVaccinationData={setVaccinationData}
-              prescription={prescription}
-              setPrescription={setPrescription}
               showDiseasePicker={showDiseasePicker}
               showDosePicker={showDosePicker}
               showDatePicker={showDatePicker}

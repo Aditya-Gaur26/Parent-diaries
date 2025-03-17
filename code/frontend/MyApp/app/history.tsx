@@ -73,7 +73,7 @@ const HistoryScreen = () => {
           
           return {
             id: session._id,
-            title: title,
+            title: title, // Make sure we're using the session title here
             subtitle: `Last active: ${formattedDate}`,
             date: formattedDate,
             timestamp: sessionDate
