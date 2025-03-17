@@ -76,7 +76,8 @@ const getOrCreateChatSession = async (userId, sessionId) => {
 
     // Create new session if no valid session was found
     session = new ChatSession({
-      userId: userId
+      userId: userId,
+      title: "New Conversation"
     });
 
     await session.save();
@@ -114,6 +115,9 @@ const addMessagesToHistory = async (sessionId, userMessage, assistantMessage) =>
   try {
     let history = await ChatHistory.findOne({ sessionId });
 
+    // Check if this is the first message (new conversation)
+    const isFirstMessage = !history || history.messages.length === 0;
+
     if (!history) {
       history = new ChatHistory({
         sessionId,
@@ -137,6 +141,21 @@ const addMessagesToHistory = async (sessionId, userMessage, assistantMessage) =>
 
     await history.save();
     console.log(`Added messages to history for session ${sessionId}`);
+
+    // If this is the first message, update the session title with truncated message
+    if (isFirstMessage) {
+      // Truncate the message to a reasonable length for a title (max 50 chars)
+      const truncatedTitle = userMessage.length > 50
+        ? userMessage.substring(0, 47) + '...'
+        : userMessage;
+
+      // Update the session title
+      await ChatSession.findByIdAndUpdate(sessionId, {
+        title: truncatedTitle
+      });
+
+      console.log(`Updated session title to: ${truncatedTitle}`);
+    }
   } catch (error) {
     console.error("Error in addMessagesToHistory:", error);
     throw error;

@@ -12,9 +12,7 @@ const chatSessionSchema = new mongoose.Schema({
   },
   title: {
     type: String,
-    default: function() {
-      return "Chat Session " + new Date().toLocaleDateString();
-    }
+    default: "New Conversation"
   },
   lastActive: {
     type: Date,
