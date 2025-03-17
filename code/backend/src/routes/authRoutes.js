@@ -146,7 +146,7 @@ router.get('/google/callback', (req, res, next) => {
                         <p>If the automatic redirection doesn't work:</p>
                         <ol style="text-align: left">
                             <li>Close this browser</li>
-                            <li>Open the Wave Diaries app</li>
+                            <li>Open the Parent Diaries app</li>
                             <li>If prompted, tap "Copy Token" below and paste it in the app</li>
                         </ol>
                         

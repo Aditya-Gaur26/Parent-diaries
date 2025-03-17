@@ -171,6 +171,7 @@ router.post("/", authenticate_jwt, upload.single('audio'), async (req, res) => {
       }
     });
 
+    // Extract the actual text response and session ID to avoid circular references
     const assistantMessage = llmResponse.data.response;
     const newSessionId = llmResponse.data.sessionId;
 
@@ -196,10 +197,12 @@ router.post("/", authenticate_jwt, upload.single('audio'), async (req, res) => {
     // Convert audioBuffer to base64 string for JSON response
     const base64Audio = audioBuffer.toString('base64');
     
+    // Fix: Only return the necessary data, avoiding the full axios response object
     return res.json({
-      userInput : transcription,
-      llmResponse: llmResponse,
-      audioBuffer: base64Audio
+      userInput: transcription,
+      llmResponse: assistantMessage, // Just include the text response, not the full axios response
+      audioBuffer: base64Audio,
+      sessionId: newSessionId
     });
   } catch (error) {
     console.error("Error in speech-to-speech processing:", error);

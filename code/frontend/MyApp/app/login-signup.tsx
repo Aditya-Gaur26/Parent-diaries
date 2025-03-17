@@ -37,7 +37,7 @@ const SignUpScreen = () => {
         </View>
         
         <View style={styles.textContainer}>
-          <Text style={styles.title}>Wave Diaries</Text>
+          <Text style={styles.title}>Parent Diaries</Text>
           <Text style={styles.subtitle}>
             Create account or log in to unleash{'\n'}
             better parenting experience

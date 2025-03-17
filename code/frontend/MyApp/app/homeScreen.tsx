@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Alert, BackHandler, ActivityIndicator } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Alert, BackHandler, ActivityIndicator, LogBox } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { BACKEND_URL } from '../config/environment';
+
+// Suppress warnings during development
+LogBox.ignoreAllLogs();
 
 export default function HomeScreen() {
   const router = useRouter();

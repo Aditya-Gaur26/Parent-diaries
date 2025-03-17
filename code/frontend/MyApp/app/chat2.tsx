@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Animated,
   ActivityIndicator,
+  LogBox,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -23,6 +24,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BACKEND_URL } from '../config/environment';
 import Markdown from 'react-native-markdown-display';
 import { useLocalSearchParams } from 'expo-router';
+
+// Suppress warnings during development
+LogBox.ignoreAllLogs();
 
 const arrayBufferToBase64 = (arrayBuffer: ArrayBuffer): string => {
   const uint8Array = new Uint8Array(arrayBuffer);

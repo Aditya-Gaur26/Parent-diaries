@@ -2,6 +2,16 @@ import { Stack } from 'expo-router';
 import React from 'react';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Slot } from 'expo-router';
+import { LogBox } from 'react-native';
+
+// Suppress warnings during development
+LogBox.ignoreAllLogs(); // Ignore all warnings
+// OR use this for specific warnings:
+// LogBox.ignoreLogs([
+//   'Warning: ...',
+//   'Possible Unhandled Promise Rejection',
+//   'Non-serializable values were found in the navigation state',
+// ]);
 
 // Prevent the app from remembering navigation state between sessions
 export const unstable_settings = {

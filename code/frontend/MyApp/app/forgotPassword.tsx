@@ -46,7 +46,7 @@ const ForgotPasswordScreen = () => {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerText}>Wave Diaries</Text>
+        <Text style={styles.headerText}>Parent Diaries</Text>
       </View>
       <View style={styles.card}>
         <View style={styles.starContainer}>

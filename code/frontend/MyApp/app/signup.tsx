@@ -82,7 +82,7 @@ const SignUpScreen = () => {
         <View style={styles.textContainer}>
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>
-            Join Wave Diaries for a better{'\n'}
+            Join Parent Diaries for a better{'\n'}
             parenting experience
           </Text>
         </View>
