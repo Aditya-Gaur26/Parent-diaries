@@ -216,6 +216,7 @@ const LogVaccinationTab = ({
             {prescription ? (
               <Image 
                 source={{ uri: prescription.uri }} 
+                
                 style={styles.prescriptionPreview}
               />
             ) : (
