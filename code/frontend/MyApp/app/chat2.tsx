@@ -144,6 +144,24 @@ const Chat2Screen = () => {
   const sound = useRef<Audio.Sound | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
+  // Make sure audio mode is properly set before any audio operations
+  const configureAudioMode = async (forRecording: boolean) => {
+    try {
+      console.log(`Configuring audio mode for ${forRecording ? 'recording' : 'playback'}`);
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: forRecording, // Critical for iOS recording
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DUCK_OTHERS,
+        shouldDuckAndroid: true,
+        interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DUCK_OTHERS,
+        playThroughEarpieceAndroid: false,
+      });
+    } catch (error) {
+      console.error('Error setting audio mode:', error);
+    }
+  };
+
   useEffect(() => {
     const setup = async () => {
       try {
@@ -151,19 +169,15 @@ const Chat2Screen = () => {
         const authToken = await AsyncStorage.getItem('authToken');
         setToken(authToken);
         
-        // Setup audio permissions
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: true,
-          playThroughEarpieceAndroid: false,
-          staysActiveInBackground: true,
-        });
-
+        // Request audio permissions first
         const { status } = await Audio.requestPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert('Permission Required', 'Audio recording permission is required for this feature.');
+          return;
         }
+        
+        // Then configure audio mode
+        await configureAudioMode(true);
       } catch (error) {
         console.error('Error in setup:', error);
       }
@@ -197,6 +211,9 @@ const Chat2Screen = () => {
 
   const startRecording = async () => {
     try {
+      // Set audio mode explicitly for recording
+      await configureAudioMode(true);
+      
       const recording = new Audio.Recording();
       await recording.prepareToRecordAsync({
         ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
@@ -250,6 +267,9 @@ const Chat2Screen = () => {
         setAudioLevel(0);
         
         // Process the audio based on mute status
+        // Set audio mode to playback before processing audio
+        await configureAudioMode(false);
+        
         if (isSpeechMuted) {
           // If muted, use ASR + LLM (audio input -> text output)
           await processAudioWithASR(uri);
@@ -404,13 +424,7 @@ const Chat2Screen = () => {
       }
       
       // Configure audio mode for playback
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
-        staysActiveInBackground: true,
-      });
+      await configureAudioMode(false);
       
       // Load and play new sound with increased volume
       console.log("Creating new sound object");
