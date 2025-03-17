@@ -7,6 +7,7 @@ import { generateVaccinationChart } from '../utils/vaccinationSchedule.js';
 export const manageVaccination = async (req, res) => {
   try {
     const { childId, disease, doseType, actualDate } = req.body;
+    console.log('Managing vaccination with data:', { childId, disease, doseType, actualDate });
 
     // Basic validation
     if (!childId || !disease || !doseType) {
@@ -27,9 +28,11 @@ export const manageVaccination = async (req, res) => {
       disease 
     }).sort({ expectedDate: 1 });
 
-    // Generate expected schedule
-    const schedule = generateVaccinationChart(child.dateOfBirth);
-    const vaccineSchedule = schedule.filter(v => v.disease === disease);
+    // Generate expected schedule based on original schedule only
+    const originalSchedule = generateVaccinationChart(child.dateOfBirth, []);
+    const vaccineSchedule = originalSchedule.filter(v => v.disease === disease);
+
+    console.log('Original schedule:', originalSchedule);
 
     // Validate dose order
     const doseIndex = vaccineSchedule.findIndex(v => v.doseType === doseType);
@@ -37,11 +40,22 @@ export const manageVaccination = async (req, res) => {
       return res.status(400).json({ msg: 'Invalid dose type for this vaccine' });
     }
 
-    // Check if previous doses are completed
+    // Get the original expected date from schedule
+    const originalExpectedDate = vaccineSchedule[doseIndex].expectedDate;
+
+    console.log('Expected date from schedule:', originalExpectedDate);
+
+    // Check if previous doses are completed in correct order
     if (doseIndex > 0) {
       const previousDoses = vaccineSchedule.slice(0, doseIndex);
+      const existingPreviousDoses = await Vaccination.find({
+        childId,
+        disease,
+        doseType: { $in: previousDoses.map(d => d.doseType) }
+      }).sort({ expectedDate: 1 });
+
       const missingPreviousDoses = previousDoses.filter(dose => 
-        !existingVaccinations.some(v => 
+        !existingPreviousDoses.some(v => 
           v.doseType === dose.doseType && v.actualDate
         )
       );
@@ -52,57 +66,57 @@ export const manageVaccination = async (req, res) => {
           missingDoses: missingPreviousDoses.map(d => d.doseType)
         });
       }
-    }
 
-    // Check minimum interval from previous dose if applicable
-    if (actualDate && doseIndex > 0) {
-      const previousDose = existingVaccinations.find(v => 
-        v.doseType === vaccineSchedule[doseIndex - 1].doseType
-      );
-      
-      if (previousDose && previousDose.actualDate) {
-        const minInterval = minimumInterval(disease, previousDose.doseType, doseType);
-        const minimumDate = new Date(previousDose.actualDate);
-        minimumDate.setMonth(minimumDate.getMonth() + minInterval);
+      // Validate minimum interval from last dose if actualDate is provided
+      if (actualDate) {
+        const lastDose = existingPreviousDoses[existingPreviousDoses.length - 1];
+        if (lastDose && lastDose.actualDate) {
+          const minInterval = minimumIntervals[disease]?.[`${lastDose.doseType}_TO_${doseType}`] || 1;
+          const minimumDate = new Date(lastDose.actualDate);
+          minimumDate.setMonth(minimumDate.getMonth() + minInterval);
 
-        if (new Date(actualDate) < minimumDate) {
-          return res.status(400).json({ 
-            msg: `Must wait at least ${minInterval} months after previous dose`,
-            earliestPossibleDate: minimumDate
-          });
+          if (new Date(actualDate) < minimumDate) {
+            return res.status(400).json({ 
+              msg: `Must wait at least ${minInterval} months after previous dose`,
+              earliestPossibleDate: minimumDate
+            });
+          }
         }
       }
     }
 
     // Find or create vaccination record
     let vaccination = await Vaccination.findOne({ childId, disease, doseType });
+    console.log('Existing vaccination record:', vaccination);
+
     if (vaccination) {
-      // Update existing record
+      console.log('Updating existing record with actual date:', actualDate);
       vaccination = await Vaccination.findByIdAndUpdate(
         vaccination._id,
         { 
           $set: { 
             actualDate,
             status: actualDate ? 'COMPLETED' : 'PENDING',
-            expectedDate: vaccineSchedule[doseIndex].expectedDate,
             lastUpdated: new Date()
           } 
         },
         { new: true }
       );
     } else {
-      // Create new record
+      console.log('Creating new record with expected date:', originalExpectedDate);
       vaccination = new Vaccination({
         childId,
         disease,
         doseType,
-        expectedDate: vaccineSchedule[doseIndex].expectedDate,
+        expectedDate: originalExpectedDate,
         actualDate,
         status: actualDate ? 'COMPLETED' : 'PENDING',
         createdBy: req.user.id
       });
       vaccination = await vaccination.save();
     }
+
+    console.log('Final vaccination record:', vaccination);
 
     // Get updated schedule
     const updatedVaccinations = await Vaccination.find({ childId });

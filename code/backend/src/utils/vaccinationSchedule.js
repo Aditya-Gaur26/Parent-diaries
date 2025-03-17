@@ -164,28 +164,45 @@ export const vaccineSchedule = [
 ];
 
 export function generateVaccinationChart(dateOfBirth, actualDates = []) {
+  console.log('Generating chart with DOB:', dateOfBirth);
+  console.log('Actual dates received:', actualDates);
   const dob = new Date(dateOfBirth);
   const chart = [];
   
-  // Sort actual dates by administration date
-  const sortedActualDates = actualDates.sort((a, b) => new Date(a.actualDate) - new Date(b.actualDate));
-  
+  // Group actual dates by disease
+  const actualDatesByDisease = {};
+  actualDates.forEach(date => {
+    if (!actualDatesByDisease[date.disease]) {
+      actualDatesByDisease[date.disease] = [];
+    }
+    actualDatesByDisease[date.disease].push(date);
+  });
+
   vaccineSchedule.forEach(vaccine => {
-    // Get actual dates for this vaccine
-    const vaccineActualDates = sortedActualDates.filter(d => d.disease === vaccine.disease);
+    console.log(`Processing vaccine: ${vaccine.disease}`);
+    const vaccineActualDates = actualDatesByDisease[vaccine.disease] || [];
+    
+    // Find first dose to check if vaccine started late
+    const firstDoseActual = vaccineActualDates.find(d => d.doseType === DoseType.FIRST);
+    const scheduleStartDate = firstDoseActual ? new Date(firstDoseActual.actualDate) : dob;
+    
+    console.log(`Vaccine ${vaccine.disease} schedule start date:`, scheduleStartDate);
+    
     let lastActualDate = null;
     let lastDoseType = null;
 
     vaccine.schedules.forEach((schedule, index) => {
-      // Check if this dose was already administered
       const administeredDose = vaccineActualDates.find(d => d.doseType === schedule.doseType);
       
       if (administeredDose) {
-        // Use the actual administered date
+        // For administered doses, keep actual dates but calculate original expected
+        const originalExpectedDate = new Date(dob);
+        originalExpectedDate.setMonth(originalExpectedDate.getMonth() + schedule.monthsAfterBirth);
+        
         chart.push({
           disease: vaccine.disease,
           doseType: schedule.doseType,
-          expectedDate: new Date(administeredDose.actualDate),
+          expectedDate: originalExpectedDate,
           actualDate: new Date(administeredDose.actualDate),
           isOptional: vaccine.isOptional || false,
           status: 'COMPLETED'
@@ -193,26 +210,30 @@ export function generateVaccinationChart(dateOfBirth, actualDates = []) {
         lastActualDate = new Date(administeredDose.actualDate);
         lastDoseType = schedule.doseType;
       } else {
-        // Calculate expected date based on either original schedule or last actual dose
-        let expectedDate = new Date(dob);
+        // For pending doses, calculate based on either original schedule or minimum intervals
+        let expectedDate;
         
         if (lastActualDate && minimumIntervals[vaccine.disease]) {
-          // Get minimum interval based on last dose type
+          // Calculate from last actual dose using minimum interval
           const intervalKey = `${lastDoseType}_TO_${schedule.doseType}`;
           const minInterval = minimumIntervals[vaccine.disease][intervalKey];
           
           if (minInterval) {
-            // Calculate new expected date based on last actual date plus minimum interval
             expectedDate = new Date(lastActualDate);
             expectedDate.setMonth(expectedDate.getMonth() + minInterval);
           } else {
-            // Use original schedule if no specific interval defined
+            // If no minimum interval defined, calculate relative to schedule start
+            expectedDate = new Date(scheduleStartDate);
             expectedDate.setMonth(expectedDate.getMonth() + schedule.monthsAfterBirth);
           }
         } else {
-          // Use original schedule if no previous doses
-          expectedDate.setMonth(expectedDate.getMonth() + schedule.monthsAfterBirth);
+          // No previous doses, calculate relative to schedule start
+          expectedDate = new Date(scheduleStartDate);
+          expectedDate.setMonth(expectedDate.getMonth() + 
+            (firstDoseActual ? schedule.monthsAfterBirth - vaccine.schedules[0].monthsAfterBirth : schedule.monthsAfterBirth));
         }
+        
+        console.log(`Calculated expected date for ${vaccine.disease} ${schedule.doseType}:`, expectedDate);
         
         chart.push({
           disease: vaccine.disease,
