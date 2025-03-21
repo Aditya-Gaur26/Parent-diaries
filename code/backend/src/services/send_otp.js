@@ -1,56 +1,65 @@
 import nodemailer from "nodemailer"
 
-let transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
+// Email transport configuration
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || "smtp.gmail.com",
+    port: process.env.SMTP_PORT || 587,
     secure: false,
     auth: {
-        user: "adityagauraa@gmail.com",
-        pass: 'dvww ecsx bcjb tqxw'
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
     }
 });
 
-// Function to send OTP email with enhanced styling
-export const sendOtp = function sendOTP(email, code) {
-    return new Promise((resolve, reject) => {
-        let mailOptions = {
-            from: process.env.SMTP_MAIL,
-            to: email,
-            subject: 'Parent Diaries Account Verification',
-            text: `Dear User,
+/**
+ * Sends an OTP verification email to the specified email address
+ * @param {string} email - Recipient's email address
+ * @param {string} code - OTP code for verification
+ * @returns {Promise<string>} - Returns the OTP code if email is sent successfully
+ * @throws {Error} - Throws error if email sending fails
+ */
+export const sendOtp = async function sendOTP(email, code) {
+    if (!email || !code) {
+        throw new Error('Email and code are required');
+    }
 
-Thank you for registering with Parent Diaries. 
+    const mailOptions = {
+        from: process.env.SMTP_MAIL,
+        to: email,
+        subject: 'Parent Diaries - Verify Your Account',
+        text: `Welcome to Parent Diaries!
 
-Your OTP for account verification is: ${code}
+Your verification code is: ${code}
 
-If you did not request this, please ignore this email.
+This code will expire in 10 minutes.
+If you didn't request this code, please ignore this email.
 
 Best regards,
 The Parent Diaries Team`,
-            html: `
-                <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
-                    <h2 style="text-align: center; color: #0056b3;">Parent Diaries Account Verification</h2>
-                    <p>Dear User,</p>
-                    <p>Thank you for registering with <strong>Parent Diaries</strong>. Please use the OTP code below to verify your account:</p>
-                    <div style="margin: 20px auto; padding: 15px; text-align: center; background-color: #f9f9f9; border: 1px solid #ddd; width: fit-content;">
-                        <span style="font-size: 24px; letter-spacing: 2px;">${code}</span>
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+                <h2 style="text-align: center; color: #2c5282; margin-bottom: 20px;">Welcome to Parent Diaries!</h2>
+                <div style="background-color: #f7fafc; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                    <p>Your verification code is:</p>
+                    <div style="background-color: #fff; padding: 15px; border-radius: 4px; text-align: center; margin: 15px 0;">
+                        <span style="font-size: 28px; letter-spacing: 3px; color: #2c5282; font-weight: bold;">${code}</span>
                     </div>
-                    <p>If you did not request this verification, please disregard this email.</p>
-                    <p>Best regards,<br>
-                    The Parent Diaries Team</p>
+                    <p style="color: #666; font-size: 14px;">This code will expire in 10 minutes.</p>
                 </div>
-            `
-        };
+                <p style="color: #666; font-size: 13px;">If you didn't request this code, please ignore this email.</p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                <p style="color: #666; font-size: 12px; text-align: center;">The Parent Diaries Team</p>
+            </div>
+        `
+    };
 
-        transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.log('Error occurred while sending email:', error);
-                reject(error);
-            } else {
-                console.log('Email sent:', info.response);
-                resolve(code);
-            }
-        });
-    });
-}
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Email sent:', info.messageId);
+        return code;
+    } catch (error) {
+        console.error('Error sending email:', error);
+        throw error;
+    }
+};
 
