@@ -1,3 +1,4 @@
+// Import required dependencies
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import dotenv from "dotenv"
@@ -8,8 +9,11 @@ import Subscription from '../models/Subscription.js';
 
 dotenv.config();
 
-
-// This function Registers a New User
+/**
+ * Registers a new user with email verification
+ * @param {Object} req - Request object containing email and password
+ * @param {Object} res - Response object
+ */
 export const registerUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -61,7 +65,11 @@ export const registerUser = async (req, res) => {
   }
 };
 
-//  Login User
+/**
+ * Authenticates user login and generates JWT token
+ * @param {Object} req - Request object with email and password
+ * @param {Object} res - Response object
+ */
 export const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -91,7 +99,11 @@ export const loginUser = async (req, res) => {
     }
 };
 
-// This Function Gets User Profile (Protected Route)
+/**
+ * Retrieves authenticated user's profile
+ * @param {Object} req - Request object with user from auth middleware
+ * @param {Object} res - Response object
+ */
 export const getUserProfile = async (req, res) => {
   try {
     // extract the user entered in the request by middleware
@@ -104,6 +116,11 @@ export const getUserProfile = async (req, res) => {
   }
 };
 
+/**
+ * Updates user profile information
+ * @param {Object} req - Request object with name, email, mobile_number, dob
+ * @param {Object} res - Response object
+ */
 export const changeUserProfile = async (req, res) => {
   try {
     console.log("hi");
@@ -134,6 +151,11 @@ export const changeUserProfile = async (req, res) => {
   }
 };
 
+/**
+ * Verifies user's email with verification code
+ * @param {Object} req - Request object with email and verification code
+ * @param {Object} res - Response object 
+ */
 export const verifyEmail = async (req, res) => {
   try {
     const { email, verificationCode } = req.body;
@@ -171,6 +193,11 @@ export const verifyEmail = async (req, res) => {
   }
 };
 
+/**
+ * Initiates password reset process by sending reset code
+ * @param {Object} req - Request object with email
+ * @param {Object} res - Response object
+ */
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -202,6 +229,11 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
+/**
+ * Resets user password with reset code
+ * @param {Object} req - Request with email, reset code and new password
+ * @param {Object} res - Response object
+ */
 export const resetPassword = async (req, res) => {
   try {
     const { email, resetCode, newPassword } = req.body;
@@ -239,6 +271,11 @@ export const resetPassword = async (req, res) => {
   }
 };
 
+/**
+ * Reports an issue/bug in the application
+ * @param {Object} req - Request with category and description
+ * @param {Object} res - Response object
+ */
 export const reportIssue = async (req, res) => {
   try {
     const { category, description } = req.body;
@@ -270,6 +307,11 @@ export const reportIssue = async (req, res) => {
   }
 };
 
+/**
+ * Updates user notification preferences
+ * @param {Object} req - Request with notification settings
+ * @param {Object} res - Response object
+ */
 export const setNotificationSettings = async (req, res) => {
   try {
     const { pushEnabled, emailEnabled, notificationTypes } = req.body;
@@ -309,6 +351,11 @@ export const setNotificationSettings = async (req, res) => {
   }
 };
 
+/**
+ * Gets user's subscription details
+ * @param {Object} req - Request object with user ID from auth
+ * @param {Object} res - Response object
+ */
 export const getSubscription = async (req, res) => {
   try {
     // Get user ID from middleware
@@ -350,6 +397,11 @@ export const getSubscription = async (req, res) => {
   }
 };
 
+/**
+ * Updates user's subscription plan
+ * @param {Object} req - Request with subscription type and settings
+ * @param {Object} res - Response object
+ */
 export const updateSubscription = async (req, res) => {
   try {
     const { type, autoRenew, paymentMethod } = req.body;
@@ -448,7 +500,11 @@ export const updateSubscription = async (req, res) => {
   }
 };
 
-// Add a new child to user profile
+/**
+ * Adds a new child to user's profile
+ * @param {Object} req - Request with child details
+ * @param {Object} res - Response object
+ */
 export const addChild = async (req, res) => {
   try {
     const { name, dateOfBirth, gender, bloodGroup, medicalConditions, allergies } = req.body;
@@ -489,7 +545,11 @@ export const addChild = async (req, res) => {
   }
 };
 
-// Get all children for a user
+/**
+ * Gets all children for authenticated user
+ * @param {Object} req - Request object with user ID
+ * @param {Object} res - Response object
+ */
 export const getChildren = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('children');
@@ -505,7 +565,11 @@ export const getChildren = async (req, res) => {
   }
 };
 
-// Update child details
+/**
+ * Updates child information
+ * @param {Object} req - Request with updated child details
+ * @param {Object} res - Response object
+ */
 export const updateChild = async (req, res) => {
   try {
     const childId = req.params.childId;
@@ -544,7 +608,11 @@ export const updateChild = async (req, res) => {
   }
 };
 
-// Remove child from profile
+/**
+ * Removes a child from user's profile
+ * @param {Object} req - Request with child ID
+ * @param {Object} res - Response object
+ */
 export const removeChild = async (req, res) => {
   try {
     const childId = req.params.childId;

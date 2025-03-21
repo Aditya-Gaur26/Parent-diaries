@@ -1,3 +1,4 @@
+// Import required dependencies and models
 import OpenAI from "openai";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
@@ -9,7 +10,12 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Helper function to get or create a chat session
+/**
+ * Helper function to manage chat sessions
+ * Either retrieves existing session or creates a new one
+ * @param {string} userId - The user's ID
+ * @param {string} sessionId - Optional session ID to retrieve
+ */
 const getOrCreateChatSession = async (userId, sessionId) => {
   try {
     let session;
@@ -46,7 +52,11 @@ const getOrCreateChatSession = async (userId, sessionId) => {
   }
 };
 
-// Helper function to get chat history for a session
+/**
+ * Helper function to retrieve chat history
+ * Creates new history if none exists
+ * @param {string} sessionId - The session ID to get history for
+ */
 const getChatHistory = async (sessionId) => {
   try {
     let history = await ChatHistory.findOne({ sessionId });
@@ -66,7 +76,13 @@ const getChatHistory = async (sessionId) => {
   }
 };
 
-// Helper function to add messages to chat history
+/**
+ * Helper function to save chat messages
+ * Also manages session titles for new conversations
+ * @param {string} sessionId - The session ID
+ * @param {string} userMessage - The user's message
+ * @param {string} assistantMessage - The AI's response
+ */
 const addMessagesToHistory = async (sessionId, userMessage, assistantMessage) => {
   try {
     let history = await ChatHistory.findOne({ sessionId });
@@ -118,7 +134,11 @@ const addMessagesToHistory = async (sessionId, userMessage, assistantMessage) =>
   }
 };
 
-// POST endpoint to interact with OpenAI
+/**
+ * Main LLM Controller
+ * Handles chat interactions with OpenAI's API
+ * Manages chat sessions and message history
+ */
 export const llm = async (req, res) => {
   try {
     // Get user ID from request (set by auth middleware)

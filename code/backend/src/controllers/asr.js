@@ -1,3 +1,4 @@
+// Import necessary modules and dependencies
 import { Router } from "express";
 import OpenAI from "openai";
 import dotenv from "dotenv";
@@ -18,14 +19,18 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-
-// Create uploads directory if it doesn't exist
+// Configure file upload settings
 const uploadDir = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Configure multer for disk storage instead of memory storage
+/**
+ * Multer configuration for handling audio file uploads
+ * - Stores files temporarily on disk
+ * - Limits file size to 10MB
+ * - Accepts only audio files
+ */
 const storage = multer.diskStorage({
   destination: function(req, file, cb) {
     cb(null, uploadDir);
@@ -51,8 +56,12 @@ const upload = multer({
   }
 });
 
-
-
+/**
+ * Audio Speech Recognition Controller
+ * Transcribes uploaded audio files using OpenAI's Whisper API
+ * @param {Object} req - Express request object with audio file
+ * @param {Object} res - Express response object returning transcription
+ */
 export const audio_transcription = async (req, res) => {
     try {
       console.log("Request received with file");
@@ -96,6 +105,10 @@ export const audio_transcription = async (req, res) => {
     }
 }
 
+/**
+ * Test endpoint for ASR functionality
+ * Simple health check for the ASR API
+ */
 export const test_asr_endpoint = async (req,res)=>{
     res.status(200).json({ message: "ASR API is working" });
 }

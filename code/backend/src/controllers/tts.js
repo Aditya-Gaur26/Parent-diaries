@@ -1,3 +1,4 @@
+// Import required dependencies
 import { Router } from "express";
 import OpenAI from "openai";
 import dotenv from "dotenv";
@@ -11,15 +12,16 @@ const __dirname = path.dirname(__filename);
 // Load environment variables
 dotenv.config();
 
+// Initialize OpenAI client with API key
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 /**
- * POST endpoint for text-to-speech conversion
- * Request body should contain:
- * - text: The text to convert to speech
- * - voice: (optional) The voice to use (alloy, echo, fable, onyx, nova, shimmer)
+ * Text-to-Speech Controller
+ * Converts text to speech using OpenAI's API
+ * @param {Object} req - Express request object with text and optional voice parameter
+ * @param {Object} res - Express response object returning audio file
  */
 export const tts =  async (req, res) => {
   try {
@@ -59,8 +61,10 @@ export const tts =  async (req, res) => {
   }
 };
 
-
-
+/**
+ * Test endpoint for TTS functionality
+ * Simple health check for the TTS API
+ */
 export const test_tts = (req, res) => {
     res.status(200).json({ message: "TTS API is working" });
 }

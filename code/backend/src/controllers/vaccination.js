@@ -1,20 +1,23 @@
+// Import required dependencies and utilities
 import{ minimumIntervals, vaccineSchedule } from '../utils/vaccinationSchedule.js'
 import Vaccination from '../models/Vaccination.js';
 import { DoseType } from '../models/Vaccination.js';
 import User from '../models/User.js';
 import { generateVaccinationChart } from '../utils/vaccinationSchedule.js';
 
+// Controller to manage (create/update) vaccination records
 export const manageVaccination = async (req, res) => {
   try {
+    // Extract data from request body
     const { childId, disease, doseType, actualDate } = req.body;
     console.log('Managing vaccination with data:', { childId, disease, doseType, actualDate });
 
-    // Basic validation
+    // Ensure all required fields are provided
     if (!childId || !disease || !doseType) {
       return res.status(400).json({ msg: 'Please provide childId, disease, and doseType' });
     }
 
-    // Get child info and validate authorization
+    // Verify child belongs to authenticated user
     const user = await User.findById(req.user.id);
     const child = user.children.find(child => child._id.toString() === childId);
     
@@ -22,19 +25,19 @@ export const manageVaccination = async (req, res) => {
       return res.status(401).json({ msg: 'Not authorized to manage vaccination for this child' });
     }
 
-    // Get existing vaccinations for this disease
+    // Retrieve existing vaccination records for validation
     const existingVaccinations = await Vaccination.find({ 
       childId, 
       disease 
     }).sort({ expectedDate: 1 });
 
-    // Generate expected schedule based on original schedule only
+    // Calculate original schedule without considering any actual vaccinations
     const originalSchedule = generateVaccinationChart(child.dateOfBirth, []);
     const vaccineSchedule = originalSchedule.filter(v => v.disease === disease);
 
     console.log('Original schedule:', originalSchedule);
 
-    // Validate dose order
+    // Ensure the requested dose type is valid for this vaccine
     const doseIndex = vaccineSchedule.findIndex(v => v.doseType === doseType);
     if (doseIndex === -1) {
       return res.status(400).json({ msg: 'Invalid dose type for this vaccine' });
@@ -45,8 +48,9 @@ export const manageVaccination = async (req, res) => {
 
     console.log('Expected date from schedule:', originalExpectedDate);
 
-    // Check if previous doses are completed in correct order
+    // Validate vaccination sequence and intervals
     if (doseIndex > 0) {
+      // Check if all previous doses are completed
       const previousDoses = vaccineSchedule.slice(0, doseIndex);
       const existingPreviousDoses = await Vaccination.find({
         childId,
@@ -67,7 +71,7 @@ export const manageVaccination = async (req, res) => {
         });
       }
 
-      // Validate minimum interval from last dose if actualDate is provided
+      // Enforce minimum time interval between doses
       if (actualDate) {
         const lastDose = existingPreviousDoses[existingPreviousDoses.length - 1];
         if (lastDose && lastDose.actualDate) {
@@ -85,7 +89,7 @@ export const manageVaccination = async (req, res) => {
       }
     }
 
-    // Find or create vaccination record
+    // Create or update vaccination record
     let vaccination = await Vaccination.findOne({ childId, disease, doseType });
     console.log('Existing vaccination record:', vaccination);
 
@@ -118,7 +122,7 @@ export const manageVaccination = async (req, res) => {
 
     console.log('Final vaccination record:', vaccination);
 
-    // Get updated schedule
+    // Generate updated schedule with new vaccination data
     const updatedVaccinations = await Vaccination.find({ childId });
     const updatedChart = generateVaccinationChart(child.dateOfBirth, 
       updatedVaccinations.map(v => ({
@@ -128,6 +132,7 @@ export const manageVaccination = async (req, res) => {
       }))
     );
 
+    // Return updated vaccination record and complete schedule
     res.json({
       vaccination,
       completeSchedule: updatedChart,
@@ -142,9 +147,10 @@ export const manageVaccination = async (req, res) => {
   }
 };
 
-// Get all vaccination records for a specific child
+// Controller to retrieve all vaccination records for a specific child
 export const getChildVaccinations = async (req, res) => {
   try {
+    // Verify authorization for accessing child's records
     const user = await User.findById(req.user.id);
     const child = user.children.find(child => child._id.toString() === req.params.childId);
     
@@ -152,12 +158,12 @@ export const getChildVaccinations = async (req, res) => {
       return res.status(401).json({ msg: 'Not authorized to view this child\'s records' });
     }
 
-    // Get actual vaccination records
+    // Retrieve and format vaccination data
     const vaccinations = await Vaccination.find({ 
       childId: req.params.childId 
     }).sort({ expectedDate: 1 });
 
-    // Generate complete vaccination chart using actual records
+    // Generate complete vaccination schedule including actual dates
     const vaccinationChart = generateVaccinationChart(child.dateOfBirth, vaccinations.map(v => ({
       disease: v.disease,
       doseType: v.doseType,
@@ -174,12 +180,15 @@ export const getChildVaccinations = async (req, res) => {
   }
 };
 
+// Controller to get available diseases and dose types
 export const getVaccinationMetadata = async (req, res) => {
   try {
+    // Extract disease names from vaccine schedule
     const diseases = vaccineSchedule.map(vaccine => ({
       name: vaccine.disease,
       // isOptional: vaccine.isOptional,
     }));
+    // Get all possible dose types
     const doseTypes = Object.values(DoseType);
     
     res.json({
