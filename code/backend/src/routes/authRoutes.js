@@ -1,28 +1,51 @@
 import express from 'express';
 import passport from 'passport';
+
+/**
+ * Express router to handle authentication routes
+ * @type {import('express').Router}
+ */
 const router = express.Router();
 
-// Log the callback URL at route level for debugging
+// Debug logging for OAuth callback URL configuration
 console.log('Auth routes loaded. Callback URL:', process.env.GOOGLE_CALLBACK_URL);
 
-// Initiate Google OAuth authentication with specific callback URL
+/**
+ * Initiates Google OAuth authentication process
+ * @route GET /auth/google 
+ * @description Starts the Google OAuth flow with specified scopes and custom state
+ * @returns {void} Redirects to Google login page
+ */
 router.get('/google', (req, res, next) => {
-  console.log('Starting Google OAuth flow. Using callback URL:', process.env.GOOGLE_CALLBACK_URL);
-  passport.authenticate('google', { 
-    scope: ['profile', 'email'],
-    session: false,
-    state: Buffer.from(JSON.stringify({ returnTo: 'wavediaries:///' })).toString('base64'),
-    // Explicitly specify the callback URL here to ensure it matches
-    callbackURL: process.env.GOOGLE_CALLBACK_URL
-  })(req, res, next);
+    // Log the start of OAuth flow for debugging
+    console.log('Starting Google OAuth flow. Using callback URL:', process.env.GOOGLE_CALLBACK_URL);
+    
+    // Configure passport authentication with custom parameters
+    passport.authenticate('google', { 
+        scope: ['profile', 'email'],
+        session: false,
+        // Encode return URL in state parameter for security
+        state: Buffer.from(JSON.stringify({ returnTo: 'wavediaries:///' })).toString('base64'),
+        callbackURL: process.env.GOOGLE_CALLBACK_URL
+    })(req, res, next);
 });
 
-// Google OAuth callback route
+/**
+ * Handles the Google OAuth callback
+ * @route GET /auth/google/callback
+ * @description Processes the OAuth callback from Google, generates JWT token on success
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ * @returns {void} Sends HTML response with redirection logic
+ */
 router.get('/google/callback', (req, res, next) => {
+    // Log callback receipt for debugging
     console.log('Received callback from Google at:', new Date().toISOString());
     console.log('Callback params:', req.query);
     
     passport.authenticate('google', { session: false }, (err, user, info) => {
+        // Log authentication result
         console.log('Auth result:', { error: !!err, user: !!user });
         
         if (err || !user) {
@@ -93,11 +116,11 @@ router.get('/google/callback', (req, res, next) => {
             `);
         }
         
-        // Generate JWT using a method defined on the user model
+        // Generate JWT token for authenticated user
         const token = user.generateToken();
         console.log('Auth successful, returning token');
         
-        // Encode token safely for URL
+        // URL-encode token for safe transport
         const encodedToken = encodeURIComponent(token);
         
         // Send HTML with clear UI and multiple redirection strategies
