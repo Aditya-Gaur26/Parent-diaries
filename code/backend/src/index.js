@@ -1,62 +1,173 @@
-import express from "express" ;
-import bcrypt from "bcryptjs"
-import dotenv from "dotenv";
-import cors from "cors";
-import connectDB from "./config/db.js";
-import userRoutes from "./routes/User.js";
-import passport  from './config/passport.js';
-import authRoutes from './routes/authRoutes.js';
-import llm from './routes/llm.js';
-import asr from './routes/asr.js';
-import tts from './routes/tts.js';
-import speech2speech from './routes/speech2speech.js';
-import vaccination from './routes/vaccination.js';
+/**
+ * @fileoverview Express server application entry point
+ * @module server
+ * @requires express
+ * @requires bcryptjs
+ * @requires dotenv
+ * @requires cors
+ * @requires ./config/db
+ * @requires passport
+ * 
+ * @description
+ * Main server configuration and entry point for the application.
+ * Handles server setup, middleware configuration, route management,
+ * and database connectivity.
+ * 
+ * @author DASS-Team-49
+ * @version 1.0.0
+ * @license MIT
+ */
 
+// Essential Dependencies
+import express from "express";  // Web application framework
+import bcrypt from "bcryptjs"   // Password hashing utility
+import dotenv from "dotenv";    // Environment variable management
+import cors from "cors";        // Cross-Origin Resource Sharing middleware
+import connectDB from "./config/db.js";  // Database connection configuration
+import passport from './config/passport.js';  // Authentication middleware
+
+// Route Imports
+import userRoutes from "./routes/User.js";          // User management routes
+import authRoutes from './routes/authRoutes.js';    // Authentication routes
+import llm from './routes/llm.js';                  // Language Learning Model routes
+import asr from './routes/asr.js';                  // Automatic Speech Recognition routes
+import tts from './routes/tts.js';                  // Text-to-Speech routes
+import speech2speech from './routes/speech2speech.js'; // Speech-to-Speech translation
+import vaccination from './routes/vaccination.js';     // Vaccination management
+
+/**
+ * @type {Object}
+ * @const
+ */
 const app = express();
 
-// Allow all cross-origin requests (Temporary setup) -- In permanent setup we try to allow request only from frontend ..
-app.use(cors());
+/**
+ * @typedef {Object} Express
+ * @property {Function} use - Middleware registration
+ * @property {Function} listen - Start server
+ * @property {Function} get - GET route handler
+ * @property {Function} post - POST route handler
+ */
 
-// Initialize Passport middleware
+/**
+ * @typedef {Object} ExpressRequest
+ * @property {Object} body - Request body
+ * @property {Object} params - URL parameters
+ * @property {Object} query - Query string parameters
+ */
+
+/**
+ * @typedef {Object} ExpressResponse
+ * @property {Function} status - Set response status
+ * @property {Function} json - Send JSON response
+ */
+
+/**
+ * @description Middleware Configuration Block
+ * @typedef {Object} MiddlewareConfig
+ * @property {Function} cors - CORS middleware
+ * @property {Function} passport - Authentication middleware
+ * @property {Function} json - JSON parser
+ * @property {Function} urlencoded - URL encoder
+ */
+
+/**
+ * Middleware Configuration
+ * ---------------------
+ * cors(): Enables Cross-Origin Resource Sharing
+ * passport.initialize(): Sets up authentication
+ * express.json(): Parses JSON payloads
+ * express.urlencoded(): Parses URL-encoded bodies
+ */
+app.use(cors());  // TODO: Configure for specific origins in production
 app.use(passport.initialize());
-
 dotenv.config()
 connectDB()
-
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
 
+/**
+ * @description API Routes Configuration
+ * @typedef {Object} RouteConfig
+ * @property {express.Router} userRoutes - User management endpoints
+ * @property {express.Router} authRoutes - Authentication endpoints
+ * @property {express.Router} asr - Speech recognition endpoints
+ * @property {express.Router} llm - Language model endpoints
+ * @property {express.Router} tts - Text-to-speech endpoints
+ * @property {express.Router} speech2speech - Speech translation endpoints
+ * @property {express.Router} vaccination - Vaccination management endpoints
+ */
 
-app.use('/api/users',userRoutes)
-app.use('/auth',authRoutes);
-app.use('/asr',asr);
-app.use('/llm',llm);
-app.use('/tts',tts);
-app.use('/speech2speech',speech2speech);
-app.use('/vaccination',vaccination);
+/**
+ * API Routes Configuration
+ * ----------------------
+ * Each route module is responsible for handling specific functionality:
+ * - /api/users: User CRUD operations and profile management
+ * - /auth: Authentication flows including OAuth
+ * - /asr: Speech recognition endpoints
+ * - /llm: Natural Language Processing operations
+ * - /tts: Text to speech conversion
+ * - /speech2speech: Direct speech translation services
+ * - /vaccination: Vaccination record management
+ */
+app.use('/api/users', userRoutes);
+app.use('/auth', authRoutes);
+app.use('/asr', asr);
+app.use('/llm', llm);
+app.use('/tts', tts);
+app.use('/speech2speech', speech2speech);
+app.use('/vaccination', vaccination);
 
+/**
+ * Health Check Endpoint
+ * @async
+ * @function
+ * @param {ExpressRequest} req - Express request object
+ * @param {ExpressResponse} res - Express response object
+ * @returns {Promise<ExpressResponse>} JSON response
+ */
+app.get("/", async (req, res) => {
+    return res.status(200).json({ message: "Backend server is operational" });
+});
 
-
-
-app.get("/",async (req,res)=>{
-  return res.status(200).json({message:"you reached backend"})
-})
-
+/**
+ * Initialize Server
+ * @async
+ * @function initializeServer
+ * @throws {Error} Database connection error
+ * @returns {Promise<void>}
+ * 
+ * @description
+ * Establishes database connection and starts the Express server.
+ * Implements error handling for database connection failures.
+ * Configures server ports and displays relevant configuration information.
+ */
 try {
-  connectDB().then(() => {
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`Local URL: http://localhost:${PORT}`);
-      console.log(`Using Ngrok URL: ${process.env.ngrok_base_url}`);
-      console.log(`Google OAuth callback: ${process.env.GOOGLE_CALLBACK_URL}`);
-      console.log('Make sure you have configured this URL in your Google Cloud Console');
+    connectDB().then(() => {
+        /** @type {number} */
+        const PORT = process.env.PORT || 5000;
+        
+        app.listen(PORT, () => {
+            console.log('\n=== Server Configuration ===');
+            console.log(`🚀 Server running on port ${PORT}`);
+            console.log(`📍 Local URL: http://localhost:${PORT}`);
+            console.log(`🌐 Ngrok URL: ${process.env.ngrok_base_url}`);
+            console.log('\n=== OAuth Configuration ===');
+            console.log(`🔐 Google OAuth callback: ${process.env.GOOGLE_CALLBACK_URL}`);
+            console.log('ℹ️  Ensure URL is configured in Google Cloud Console');
+            console.log('\n=== Server Ready ===');
+        });
+    }).catch(/** @param {Error} error */(error) => {
+        console.error("❌ Database Connection Error:", error);
+        process.exit(1); // Terminate process on database connection failure
     });
-  }).catch(error => {
-    console.error("Failed to connect to MongoDB", error);
-    process.exit(1); // Stop the process if DB connection fails
-  });
-} catch (error) {
-  console.log(error);
+} catch (/** @type {Error} */ error) {
+    console.error("❌ Server Initialization Error:", error);
+    process.exit(1);
 }
+
+/**
+ * @type {Express}
+ */
+export default app;
 
