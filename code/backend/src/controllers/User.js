@@ -10,9 +10,22 @@ import Subscription from '../models/Subscription.js';
 dotenv.config();
 
 /**
- * Registers a new user with email verification
- * @param {Object} req - Request object containing email and password
- * @param {Object} res - Response object
+ * Register new user and send verification email
+ * @route POST /api/user/signup
+ * @access Public
+ * @param {Object} req.body
+ * @param {string} req.body.email - User's email address
+ * @param {string} req.body.password - User's password (min 6 characters)
+ * @returns {Object} Response
+ * @returns {string} Response.message - Success/error message
+ * @throws {400} - If user already exists
+ * @throws {500} - Server error during registration
+ * 
+ * Creates a new user account with:
+ * - Default notification settings
+ * - Default child profile
+ * - Email verification code
+ * Sends verification email to user
  */
 export const registerUser = async (req, res) => {
   try {
@@ -66,9 +79,20 @@ export const registerUser = async (req, res) => {
 };
 
 /**
- * Authenticates user login and generates JWT token
- * @param {Object} req - Request object with email and password
- * @param {Object} res - Response object
+ * Authenticate user and generate JWT token
+ * @route POST /api/user/login
+ * @access Public
+ * @param {Object} req.body
+ * @param {string} req.body.email - User's email
+ * @param {string} req.body.password - User's password
+ * @returns {Object} Response
+ * @returns {string} Response.message - Success/error message
+ * @returns {string} Response.token - JWT authentication token
+ * @throws {400} - Invalid credentials or unverified email
+ * @throws {500} - Server error during authentication
+ * 
+ * Verifies user credentials and generates JWT token for authenticated requests
+ * Token is verified immediately after generation
  */
 export const loginUser = async (req, res) => {
     try {
@@ -100,9 +124,14 @@ export const loginUser = async (req, res) => {
 };
 
 /**
- * Retrieves authenticated user's profile
- * @param {Object} req - Request object with user from auth middleware
- * @param {Object} res - Response object
+ * Get authenticated user's profile
+ * @route GET /api/user/profile
+ * @access Private
+ * @requires Authentication JWT token in Authorization header
+ * @param {Object} req.user - User object from authentication middleware
+ * @returns {Object} User profile data excluding password
+ * @throws {401} - Missing or invalid authentication
+ * @throws {500} - Server error while fetching profile
  */
 export const getUserProfile = async (req, res) => {
   try {
@@ -501,9 +530,31 @@ export const updateSubscription = async (req, res) => {
 };
 
 /**
- * Adds a new child to user's profile
- * @param {Object} req - Request with child details
- * @param {Object} res - Response object
+ * Child Management Controllers
+ */
+
+/**
+ * Add new child to user's profile
+ * @route POST /api/user/children
+ * @access Private
+ * @requires Authentication JWT token in Authorization header
+ * @param {Object} req.body Child information
+ * @param {string} req.body.name - Child's full name
+ * @param {Date} req.body.dateOfBirth - Child's birth date (YYYY-MM-DD)
+ * @param {('Male'|'Female'|'Other')} req.body.gender - Child's gender
+ * @param {string} [req.body.bloodGroup] - Blood group (A+, B+, O-, etc.)
+ * @param {string[]} [req.body.medicalConditions] - List of medical conditions
+ * @param {string[]} [req.body.allergies] - List of allergies
+ * @returns {Object} Response
+ * @returns {string} Response.message - Success message
+ * @returns {Object} Response.child - Created child profile
+ * @throws {400} - Missing required fields
+ * @throws {401} - Unauthorized
+ * @throws {404} - User not found
+ * @throws {500} - Server error while adding child
+ * 
+ * Creates a new child profile and adds it to user's children array
+ * Supports optional medical information
  */
 export const addChild = async (req, res) => {
   try {

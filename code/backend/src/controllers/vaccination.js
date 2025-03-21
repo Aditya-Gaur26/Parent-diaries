@@ -5,7 +5,12 @@ import { DoseType } from '../models/Vaccination.js';
 import User from '../models/User.js';
 import { generateVaccinationChart } from '../utils/vaccinationSchedule.js';
 
-// Controller to manage (create/update) vaccination records
+/**
+ * @route   POST /api/vaccination/manage
+ * @desc    Add or update vaccination record
+ * @access  Private (Parents only)
+ * @details Handles both creation and updates of vaccination records for children
+ */
 export const manageVaccination = async (req, res) => {
   try {
     // Extract data from request body
@@ -147,7 +152,12 @@ export const manageVaccination = async (req, res) => {
   }
 };
 
-// Controller to retrieve all vaccination records for a specific child
+/**
+ * @route   GET /api/vaccination/child/:childId
+ * @desc    Get all vaccination records and schedule for a child
+ * @access  Private (Parents only)
+ * @details Retrieves complete vaccination history and upcoming schedule for a specific child
+ */
 export const getChildVaccinations = async (req, res) => {
   try {
     // Verify authorization for accessing child's records
@@ -180,7 +190,12 @@ export const getChildVaccinations = async (req, res) => {
   }
 };
 
-// Controller to get available diseases and dose types
+/**
+ * @route   GET /api/vaccination/metadata
+ * @desc    Get list of diseases and dose types
+ * @access  Private
+ * @details Provides reference data for vaccination types and schedules
+ */
 export const getVaccinationMetadata = async (req, res) => {
   try {
     // Extract disease names from vaccine schedule
