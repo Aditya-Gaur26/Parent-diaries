@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: routes/authRoutes.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: routes/authRoutes.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import express from 'express';
+import passport from 'passport';
+
+/**
+ * Express router to handle authentication routes
+ * @type {import('express').Router}
+ */
+const router = express.Router();
+
+// Debug logging for OAuth callback URL configuration
+console.log('Auth routes loaded. Callback URL:', process.env.GOOGLE_CALLBACK_URL);
+
+/**
+ * Initiates Google OAuth authentication process
+ * @route GET /auth/google 
+ * @description Starts the Google OAuth flow with specified scopes and custom state
+ * @returns {void} Redirects to Google login page
+ */
+router.get('/google', (req, res, next) => {
+    // Log the start of OAuth flow for debugging
+    console.log('Starting Google OAuth flow. Using callback URL:', process.env.GOOGLE_CALLBACK_URL);
+    
+    // Configure passport authentication with custom parameters
+    passport.authenticate('google', { 
+        scope: ['profile', 'email'],
+        session: false,
+        // Encode return URL in state parameter for security
+        state: Buffer.from(JSON.stringify({ returnTo: 'wavediaries:///' })).toString('base64'),
+        callbackURL: process.env.GOOGLE_CALLBACK_URL
+    })(req, res, next);
+});
+
+/**
+ * Handles the Google OAuth callback
+ * @route GET /auth/google/callback
+ * @description Processes the OAuth callback from Google, generates JWT token on success
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ * @returns {void} Sends HTML response with redirection logic
+ */
+router.get('/google/callback', (req, res, next) => {
+    // Log callback receipt for debugging
+    console.log('Received callback from Google at:', new Date().toISOString());
+    console.log('Callback params:', req.query);
+    
+    passport.authenticate('google', { session: false }, (err, user, info) => {
+        // Log authentication result
+        console.log('Auth result:', { error: !!err, user: !!user });
+        
+        if (err || !user) {
+            // If authentication fails, prepare error redirect with multiple methods
+            const errorMessage = encodeURIComponent(err?.message || info?.message || 'Authentication failed');
+            console.error('Auth error:', err || info?.message);
+            
+            return res.send(`
+                &lt;html>
+                &lt;head>
+                    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    &lt;style>
+                        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f9f9f9; }
+                        .container { max-width: 500px; margin: 0 auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                        h2 { color: #d32f2f; }
+                        .button { 
+                            display: inline-block; 
+                            background-color: #4285f4; 
+                            color: white; 
+                            padding: 12px 24px; 
+                            border-radius: 4px; 
+                            text-decoration: none; 
+                            margin: 15px 0;
+                            font-weight: bold;
+                            font-size: 16px;
+                        }
+                        .instructions { margin-top: 15px; color: #555; }
+                    &lt;/style>
+                &lt;/head>
+                &lt;body>
+                    &lt;div class="container">
+                        &lt;h2>Authentication Failed&lt;/h2>
+                        &lt;p>Unable to complete the sign-in process.&lt;/p>
+                        
+                        &lt;a href="wavediaries:///" class="button">Return to App&lt;/a>
+                        
+                        &lt;div class="instructions">
+                            &lt;p>&lt;strong>Having trouble?&lt;/strong>&lt;/p>
+                            &lt;p>If the button doesn't work, please close this browser and open the Wave Diaries app manually.&lt;/p>
+                        &lt;/div>
+                    &lt;/div>
+
+                    &lt;script>
+                        // Try various methods to redirect
+                        function attemptRedirect() {
+                            // For Android - try multiple approaches
+                            window.location.href = 'wavediaries:///';
+
+                            // For Expo Go development
+                            setTimeout(() => {
+                                window.location.href = 'exp://192.168.160.155:8081';
+                            }, 500);
+                            
+                            // Try standard redirect as last resort
+                            setTimeout(() => {
+                                window.location.replace('wavediaries:///');
+                            }, 1000);
+                        }
+                        
+                        // Attempt redirect immediately
+                        attemptRedirect();
+                        
+                        // Try again after a delay
+                        setTimeout(attemptRedirect, 2000);
+                    &lt;/script>
+                &lt;/body>
+                &lt;/html>
+            `);
+        }
+        
+        // Generate JWT token for authenticated user
+        const token = user.generateToken();
+        console.log('Auth successful, returning token');
+        
+        // URL-encode token for safe transport
+        const encodedToken = encodeURIComponent(token);
+        
+        // Send HTML with clear UI and multiple redirection strategies
+        return res.send(`
+            &lt;html>
+            &lt;head>
+                &lt;meta name="viewport" content="width=device-width, initial-scale=1.0">
+                &lt;style>
+                    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f9f9f9; }
+                    .container { max-width: 500px; margin: 0 auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    h2 { color: #4caf50; }
+                    .button { 
+                        display: inline-block; 
+                        background-color: #4285f4; 
+                        color: white; 
+                        padding: 12px 24px; 
+                        border-radius: 4px; 
+                        text-decoration: none; 
+                        margin: 15px 0;
+                        font-weight: bold;
+                        font-size: 16px;
+                    }
+                    .instructions { margin-top: 15px; color: #555; }
+                    .token-value { 
+                        word-break: break-all; 
+                        background: #f0f0f0;
+                        padding: 10px;
+                        border-radius: 4px;
+                        margin: 10px 0;
+                        font-family: monospace;
+                        font-size: 12px;
+                        text-align: left;
+                        display: none;
+                    }
+                &lt;/style>
+            &lt;/head>
+            &lt;body>
+                &lt;div class="container">
+                    &lt;h2>Authentication Successful&lt;/h2>
+                    &lt;p>You've successfully signed in!&lt;/p>
+                    
+                    &lt;a href="wavediaries://login?token=${encodedToken}" class="button">Return to Wave Diaries&lt;/a>
+                    
+                    &lt;div class="instructions">
+                        &lt;p>&lt;strong>Having trouble?&lt;/strong>&lt;/p>
+                        &lt;p>If the automatic redirection doesn't work:&lt;/p>
+                        &lt;ol style="text-align: left">
+                            &lt;li>Close this browser&lt;/li>
+                            &lt;li>Open the Parent Diaries app&lt;/li>
+                            &lt;li>If prompted, tap "Copy Token" below and paste it in the app&lt;/li>
+                        &lt;/ol>
+                        
+                        &lt;button onclick="copyToken()" style="padding: 8px 16px; margin-top: 10px; cursor: pointer;">Copy Token&lt;/button>
+                        &lt;p id="copyStatus" style="color: green; display: none; margin-top: 5px;">Token copied!&lt;/p>
+                        &lt;div id="tokenDisplay" class="token-value">${token}&lt;/div>
+                    &lt;/div>
+                &lt;/div>
+
+                &lt;script>
+                    // Function to copy token to clipboard
+                    function copyToken() {
+                        const tokenEl = document.getElementById('tokenDisplay');
+                        const tokenValue = "${token}";
+                        
+                        // Show the token briefly
+                        tokenEl.style.display = 'block';
+                        
+                        // Create a temporary textarea for copying
+                        const textarea = document.createElement('textarea');
+                        textarea.value = tokenValue;
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        
+                        // Show copy confirmation
+                        document.getElementById('copyStatus').style.display = 'block';
+                        setTimeout(() => {
+                            document.getElementById('copyStatus').style.display = 'none';
+                            tokenEl.style.display = 'none';
+                        }, 2000);
+                    }
+
+                    // Try various methods to redirect
+                    function attemptRedirect() {
+                        // For Android &amp; iOS - try multiple approaches with the token
+                        window.location.href = 'wavediaries://login?token=${encodedToken}';
+                        
+                        // For Expo Go development
+                        setTimeout(() => {
+                            window.location.href = 'exp://192.168.160.155:8081/--/login?token=${encodedToken}';
+                        }, 500);
+                        
+                        // Try standard redirect as last resort
+                        setTimeout(() => {
+                            window.location.replace('wavediaries://login?token=${encodedToken}');
+                        }, 1000);
+                    }
+                    
+                    // Attempt redirect immediately
+                    attemptRedirect();
+                    
+                    // Try again after a delay
+                    setTimeout(attemptRedirect, 1500);
+                &lt;/script>
+            &lt;/body>
+            &lt;/html>
+        `);
+    })(req, res, next);
+});
+
+export default router;</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-server.html">server</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addMessagesToHistory">addMessagesToHistory</a></li><li><a href="global.html#audio_transcription">audio_transcription</a></li><li><a href="global.html#changeUserProfile">changeUserProfile</a></li><li><a href="global.html#forgotPassword">forgotPassword</a></li><li><a href="global.html#getChatHistory">getChatHistory</a></li><li><a href="global.html#getChildVaccinations">getChildVaccinations</a></li><li><a href="global.html#getChildren">getChildren</a></li><li><a href="global.html#getOrCreateChatSession">getOrCreateChatSession</a></li><li><a href="global.html#getSubscription">getSubscription</a></li><li><a href="global.html#llm">llm</a></li><li><a href="global.html#loginUser">loginUser</a></li><li><a href="global.html#manageVaccination">manageVaccination</a></li><li><a href="global.html#registerUser">registerUser</a></li><li><a href="global.html#removeChild">removeChild</a></li><li><a href="global.html#reportIssue">reportIssue</a></li><li><a href="global.html#resetPassword">resetPassword</a></li><li><a href="global.html#router">router</a></li><li><a href="global.html#sendOtp">sendOtp</a></li><li><a href="global.html#sendResetOtp">sendResetOtp</a></li><li><a href="global.html#setNotificationSettings">setNotificationSettings</a></li><li><a href="global.html#storage">storage</a></li><li><a href="global.html#test_asr_endpoint">test_asr_endpoint</a></li><li><a href="global.html#test_tts">test_tts</a></li><li><a href="global.html#tts">tts</a></li><li><a href="global.html#updateChild">updateChild</a></li><li><a href="global.html#updateSubscription">updateSubscription</a></li><li><a href="global.html#verifyEmail">verifyEmail</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.4</a> on Sun Mar 23 2025 03:24:20 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

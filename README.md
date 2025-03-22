@@ -12,9 +12,4 @@
 The problem that we are trying to solve is confusion, lack of clarity and of experience that new parents face, by helping them log the journey of their child and incorporate a conversational speech-to-speech platform using AI which can advice them on how to parent their child. This app intends to help parents make better decisions for the future of their child, and aid their child's better upbringing. It also aims to reduce stress and confusion that parents have. 
 
 ## How to run :
-Frontend:
-Read instructions in code/frontend/README.md
-
-Backend:
-run:
-npm run dev in code/backend
+Read instructions in code/README.md

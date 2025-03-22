@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: controllers/asr.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: controllers/asr.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>// Import necessary modules and dependencies
+import { Router } from "express";
+import OpenAI from "openai";
+import dotenv from "dotenv";
+import multer from "multer";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// Get the directory name
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables
+dotenv.config();
+
+const router = Router();
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// Configure file upload settings
+const uploadDir = path.join(__dirname, '../../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+/**
+ * Multer configuration for handling audio file uploads
+ * - Stores files temporarily on disk
+ * - Limits file size to 10MB
+ * - Accepts only audio files
+ */
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function(req, file, cb) {
+    // Create unique filename with timestamp
+    cb(null, `${Date.now()}-${file.originalname}`);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max file size
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept audio files only
+    if (file.mimetype.startsWith('audio/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only audio files are allowed!'), false);
+    }
+  }
+});
+
+/**
+ * Audio Speech Recognition Controller
+ * Transcribes uploaded audio files using OpenAI's Whisper API
+ * @param {Object} req - Express request object with audio file
+ * @param {Object} res - Express response object returning transcription
+ */
+export const audio_transcription = async (req, res) => {
+    try {
+      console.log("Request received with file");
+      if (!req.file) {
+        return res.status(400).json({ error: "No audio file uploaded" });
+      }
+  
+      console.log("File received, path:", req.file.path);
+  
+      console.log("Calling OpenAI API...");
+      const startTime = Date.now();
+  
+      // Use createReadStream with the file path
+      const transcription = await openai.audio.transcriptions.create({
+        file: fs.createReadStream(req.file.path),
+        model: "whisper-1",
+      });
+  
+      // Clean up the temporary file
+      fs.unlinkSync(req.file.path);
+  
+      const endTime = Date.now();
+      console.log(`OpenAI API call completed in ${endTime - startTime}ms`);
+  
+      return res.status(200).json({
+        transcription: transcription.text
+      });
+    } catch (error) {
+      console.error("Error transcribing audio:", error);
+  
+      // Make sure to clean up the file even if there's an error
+      if (req.file &amp;&amp; req.file.path &amp;&amp; fs.existsSync(req.file.path)) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (unlinkError) {
+          console.error("Error deleting temporary file:", unlinkError);
+        }
+      }
+  
+      return res.status(500).json({ error: "An error occurred while transcribing the audio", details: error.message });
+    }
+}
+
+/**
+ * Test endpoint for ASR functionality
+ * Simple health check for the ASR API
+ */
+export const test_asr_endpoint = async (req,res)=>{
+    res.status(200).json({ message: "ASR API is working" });
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-server.html">server</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addMessagesToHistory">addMessagesToHistory</a></li><li><a href="global.html#audio_transcription">audio_transcription</a></li><li><a href="global.html#changeUserProfile">changeUserProfile</a></li><li><a href="global.html#forgotPassword">forgotPassword</a></li><li><a href="global.html#getChatHistory">getChatHistory</a></li><li><a href="global.html#getChildVaccinations">getChildVaccinations</a></li><li><a href="global.html#getChildren">getChildren</a></li><li><a href="global.html#getOrCreateChatSession">getOrCreateChatSession</a></li><li><a href="global.html#getSubscription">getSubscription</a></li><li><a href="global.html#llm">llm</a></li><li><a href="global.html#loginUser">loginUser</a></li><li><a href="global.html#manageVaccination">manageVaccination</a></li><li><a href="global.html#registerUser">registerUser</a></li><li><a href="global.html#removeChild">removeChild</a></li><li><a href="global.html#reportIssue">reportIssue</a></li><li><a href="global.html#resetPassword">resetPassword</a></li><li><a href="global.html#router">router</a></li><li><a href="global.html#sendOtp">sendOtp</a></li><li><a href="global.html#sendResetOtp">sendResetOtp</a></li><li><a href="global.html#setNotificationSettings">setNotificationSettings</a></li><li><a href="global.html#storage">storage</a></li><li><a href="global.html#test_asr_endpoint">test_asr_endpoint</a></li><li><a href="global.html#test_tts">test_tts</a></li><li><a href="global.html#tts">tts</a></li><li><a href="global.html#updateChild">updateChild</a></li><li><a href="global.html#updateSubscription">updateSubscription</a></li><li><a href="global.html#verifyEmail">verifyEmail</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.4</a> on Sun Mar 23 2025 03:24:20 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
