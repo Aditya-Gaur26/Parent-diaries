@@ -23,6 +23,26 @@ export default function HomeScreen() {
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   
+  // Add back button handler to prevent going back to auth screens
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // On home screen, prevent going back to auth screens
+      // Instead, prompt user to confirm exit app if they press back
+      Alert.alert(
+        'Exit App', 
+        'Do you want to exit Parent Diaries?',
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => {} },
+          { text: 'Exit', onPress: () => BackHandler.exitApp() }
+        ],
+        { cancelable: true }
+      );
+      return true; // Prevent default back behavior
+    });
+    
+    return () => backHandler.remove();
+  }, []);
+
   // Fetch user profile only once when component mounts
   useEffect(() => {
     fetchUserProfile();

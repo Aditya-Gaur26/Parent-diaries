@@ -20,15 +20,38 @@ const LoginScreen = () => {
   const [emailError, setEmailError] = useState('');
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Check for existing authentication on component mount
+  // Enhanced check auth function and back handler
   useEffect(() => {
     checkAuth();
-  }, []);
+    
+    // Add back button handler to prevent back navigation when authenticated
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // If we're checking auth status or authenticated, prevent back navigation
+      if (isCheckingAuth) return true;
+      
+      // Check if user has a token
+      AsyncStorage.getItem('authToken').then(token => {
+        if (token) {
+          // User is authenticated, prevent back and go to home
+          router.replace('/homeScreen');
+          return true;
+        }
+      }).catch(error => console.error('Error checking auth in back handler:', error));
+      
+      // Allow default back behavior if not authenticated
+      return false;
+    });
+    
+    // Clean up the back handler when component unmounts
+    return () => backHandler.remove();
+  }, [isCheckingAuth]);
 
+  // More robust auth check that runs when component mounts
   const checkAuth = async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       if (token) {
+        console.log('User is already logged in, redirecting to home');
         router.replace('/homeScreen');
       }
     } catch (error) {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,42 @@ const ForgotPasswordScreen = () => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Add authentication check and back handler
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        if (token) {
+          console.log('User is already logged in, redirecting to home');
+          router.replace('/homeScreen');
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+    
+    checkAuth();
+    
+    // Add back button handler
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (isCheckingAuth) return true;
+      
+      AsyncStorage.getItem('authToken').then(token => {
+        if (token) {
+          router.replace('/homeScreen');
+          return true;
+        }
+      }).catch(error => console.error('Error checking auth in back handler:', error));
+      
+      return false;
+    });
+    
+    return () => backHandler.remove();
+  }, []);
 
   const handleSubmit = async () => {
     if (!email.trim()) {
