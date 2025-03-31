@@ -1,21 +1,39 @@
-import React,{useState,useEffect} from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image, BackHandler } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 
 const SignUpScreen = () => {
   const router = useRouter();
-
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
     checkAuth();
-  }, []);
+    
+    // Add back button handler
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (isCheckingAuth) return true;
+      
+      AsyncStorage.getItem('authToken').then(token => {
+        if (token) {
+          router.replace('/homeScreen');
+          return true;
+        }
+      }).catch(error => console.error('Error checking auth in back handler:', error));
+      
+      // Since this is likely the entry point, we might want to exit the app here
+      // if the user is not authenticated and presses back
+      return true; // Prevent default back behavior in any case
+    });
+    
+    return () => backHandler.remove();
+  }, [isCheckingAuth]);
 
   const checkAuth = async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       if (token) {
+        console.log('User is already logged in, redirecting to home');
         router.replace('/homeScreen');
       }
     } catch (error) {

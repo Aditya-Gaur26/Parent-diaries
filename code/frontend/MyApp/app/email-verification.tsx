@@ -13,6 +13,7 @@ const EmailVerificationScreen = () => {
   const [timer, setTimer] = useState(20); // Changed to 20 seconds like the reference
   const [activeIndex, setActiveIndex] = useState(0);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   
   const email = params?.email ? String(params.email) : 'your email';
 
@@ -109,6 +110,47 @@ const EmailVerificationScreen = () => {
       setIsVerifying(false);
     }
   };
+
+  // Add back button and authentication check
+  useEffect(() => {
+    // Check if user is already fully authenticated
+    const checkAuth = async () => {
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        // If token exists and user has already completed registration
+        // (this is a bit tricky since this page is part of the registration flow)
+        const userData = await AsyncStorage.getItem('userData');
+        if (token && userData) {
+          console.log('User is already fully authenticated, redirecting to home');
+          router.replace('/homeScreen');
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+    
+    checkAuth();
+    
+    // Add back button handler
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (isCheckingAuth) return true;
+      
+      AsyncStorage.getItem('authToken').then(token => {
+        AsyncStorage.getItem('userData').then(userData => {
+          if (token && userData) {
+            router.replace('/homeScreen');
+            return true;
+          }
+        });
+      }).catch(error => console.error('Error checking auth in back handler:', error));
+      
+      return false;
+    });
+    
+    return () => backHandler.remove();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>

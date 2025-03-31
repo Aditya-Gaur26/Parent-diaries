@@ -25,12 +25,29 @@ const CreateAccountScreen = () => {
 
   useEffect(() => {
     checkAuth();
-  }, []);
+    
+    // Add back button handler
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (isCheckingAuth) return true;
+      
+      AsyncStorage.getItem('authToken').then(token => {
+        if (token) {
+          router.replace('/homeScreen');
+          return true;
+        }
+      }).catch(error => console.error('Error checking auth in back handler:', error));
+      
+      return false;
+    });
+    
+    return () => backHandler.remove();
+  }, [isCheckingAuth]);
 
   const checkAuth = async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       if (token) {
+        console.log('User is already logged in, redirecting to home');
         router.replace('/homeScreen');
       }
     } catch (error) {
