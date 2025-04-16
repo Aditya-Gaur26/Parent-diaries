@@ -20,11 +20,13 @@
 
 // Essential Dependencies
 import express from "express";  // Web application framework
+import http from "http";        // HTTP server
 import bcrypt from "bcryptjs"   // Password hashing utility
 import dotenv from "dotenv";    // Environment variable management
 import cors from "cors";        // Cross-Origin Resource Sharing middleware
 import connectDB from "./config/db.js";  // Database connection configuration
 import passport from './config/passport.js';  // Authentication middleware
+import initializeSocket from './socket/socketManager.js'; // WebSocket functionality
 
 // Route Imports
 import userRoutes from "./routes/User.js";          // User management routes
@@ -34,12 +36,23 @@ import asr from './routes/asr.js';                  // Automatic Speech Recognit
 import tts from './routes/tts.js';                  // Text-to-Speech routes
 import speech2speech from './routes/speech2speech.js'; // Speech-to-Speech translation
 import vaccination from './routes/vaccination.js';     // Vaccination management
+import doctorRoutes from "./routes/Doctor.js";      // Doctor routes
+import adminRoutes from "./routes/Admin.js";        // Admin routes
+import chatRoutes from './routes/chat.js';          // Chat functionality routes
+import { Chat } from "openai/resources/index.mjs";
+
 
 /**
  * @type {Object}
  * @const
  */
 const app = express();
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+const io = initializeSocket(server);
 
 /**
  * @typedef {Object} Express
@@ -96,6 +109,8 @@ app.use(express.urlencoded({ extended: true }));
  * @property {express.Router} tts - Text-to-speech endpoints
  * @property {express.Router} speech2speech - Speech translation endpoints
  * @property {express.Router} vaccination - Vaccination management endpoints
+ * @property {express.Router} doctorRoutes - Doctor management endpoints
+ * @property {express.Router} adminRoutes - Admin management endpoints
  */
 
 /**
@@ -109,6 +124,8 @@ app.use(express.urlencoded({ extended: true }));
  * - /tts: Text to speech conversion
  * - /speech2speech: Direct speech translation services
  * - /vaccination: Vaccination record management
+ * - /api/doctors: Doctor interface and functionality
+ * - /api/admin: Admin management and operations
  */
 app.use('/api/users', userRoutes);
 app.use('/auth', authRoutes);
@@ -117,6 +134,12 @@ app.use('/llm', llm);
 app.use('/tts', tts);
 app.use('/speech2speech', speech2speech);
 app.use('/vaccination', vaccination);
+app.use('/api/doctors', doctorRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/chat', chatRoutes)
+
+// Make socket.io instance available to routes
+app.set('io', io);
 
 /**
  * Health Check Endpoint
@@ -147,7 +170,7 @@ try {
         /** @type {number} */
         const PORT = process.env.PORT || 5000;
         
-        app.listen(PORT, () => {
+        server.listen(PORT, () => {
             console.log('\n=== Server Configuration ===');
             console.log(`🚀 Server running on port ${PORT}`);
             console.log(`📍 Local URL: http://localhost:${PORT}`);
@@ -155,6 +178,8 @@ try {
             console.log('\n=== OAuth Configuration ===');
             console.log(`🔐 Google OAuth callback: ${process.env.GOOGLE_CALLBACK_URL}`);
             console.log('ℹ️  Ensure URL is configured in Google Cloud Console');
+            console.log('\n=== WebSocket Configuration ===');
+            console.log('📡 Socket.IO server initialized');
             console.log('\n=== Server Ready ===');
         });
     }).catch(/** @param {Error} error */(error) => {

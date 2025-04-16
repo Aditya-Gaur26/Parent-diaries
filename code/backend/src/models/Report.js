@@ -1,5 +1,26 @@
 import mongoose from 'mongoose';
 
+const replySchema = new mongoose.Schema({
+  adminId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  adminName: {
+    type: String,
+    required: true
+  },
+  message: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now
+  }
+});
+
 const reportSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -29,7 +50,9 @@ const reportSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  // Add replies array
+  replies: [replySchema]
 });
 
 const Report = mongoose.model('Report', reportSchema);

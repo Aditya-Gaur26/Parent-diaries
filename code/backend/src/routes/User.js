@@ -15,7 +15,8 @@ import {
   addChild,
   getChildren,
   updateChild,
-  removeChild
+  removeChild,
+  getParentsForChat
 } from '../controllers/User.js';
 const router = express.Router();
 
@@ -193,5 +194,14 @@ router.put('/children/:childId', authenticate_jwt, updateChild);
  * @returns {Object} Deletion confirmation
  */
 router.delete('/children/:childId', authenticate_jwt, removeChild);
+
+/**
+ * Get parents for chat
+ * @route GET /api/user/parents-for-chat
+ * @access Private
+ * @requires Authentication
+ * @returns {Array} List of parents for chat
+ */
+router.get('/parents-for-chat', authenticate_jwt, getParentsForChat);
 
 export default router;

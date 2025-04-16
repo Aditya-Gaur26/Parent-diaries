@@ -45,7 +45,32 @@ export default function HomeScreen() {
 
   // Fetch user profile only once when component mounts
   useEffect(() => {
-    fetchUserProfile();
+    // First check if this is the correct screen for the user's role
+    const checkRoleMatch = async () => {
+      try {
+        const role = await AsyncStorage.getItem('userRole');
+        
+        // If this is an admin or doctor who somehow got to the user home screen,
+        // redirect them to their correct home screen
+        if (role === 'admin') {
+          console.log('Admin detected on user screen, redirecting');
+          router.replace('/adminHomeScreen');
+          return;
+        } else if (role === 'doctor') {
+          console.log('Doctor detected on user screen, redirecting');
+          router.replace('/doctorHomeScreen');
+          return;
+        }
+        
+        // If user role or no role, proceed with loading profile
+        fetchUserProfile();
+      } catch (error) {
+        console.error('Error checking role match:', error);
+        fetchUserProfile();
+      }
+    };
+    
+    checkRoleMatch();
   }, []);
 
   // Use useFocusEffect to refresh chat sessions whenever screen gains focus
@@ -266,6 +291,21 @@ export default function HomeScreen() {
                 style={styles.optionImage}
               />
               <Text style={styles.optionText}>Chat with Companion</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.optionsContainer}>
+          <TouchableOpacity 
+            style={styles.optionCard} 
+            onPress={() => router.push('/connect')}>
+            <View style={styles.optionContent}>
+              <Image
+               source={require('@/assets/images/connect-icon.png')}
+          
+                style={styles.optionImage}
+              />
+              <Text style={styles.optionText}>Connect</Text>
             </View>
           </TouchableOpacity>
         </View>

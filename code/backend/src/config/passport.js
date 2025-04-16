@@ -40,15 +40,15 @@ passport.use(
         const mobileNumber = profile._json?.phoneNumber || null;
         const dob = profile._json?.birthday || null;
 
-        // Create default child
-        const defaultChild = {
-          name: 'Default Child',
-          dateOfBirth: new Date(),  // Current date as placeholder
-          gender: 'Other',  // Default gender
-          bloodGroup: null,
-          medicalConditions: [],
-          allergies: []
-        };
+        // // Create default child
+        // const defaultChild = {
+        //   name: 'Default Child',
+        //   dateOfBirth: new Date(),  // Current date as placeholder
+        //   gender: 'Other',  // Default gender
+        //   bloodGroup: null,
+        //   medicalConditions: [],
+        //   allergies: []
+        // };
         
         if (!user) {
           // Create new user if doesn't exist
@@ -61,7 +61,7 @@ passport.use(
             dob: dob,
             isVerified: true,
             subscriptionType: 'free', // Set default subscription type
-            children : [defaultChild]
+            // children : [defaultChild]
           }).save();
           
           // Create a default subscription for the new Google user

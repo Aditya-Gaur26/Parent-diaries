@@ -29,11 +29,21 @@ const LoginScreen = () => {
       // If we're checking auth status or authenticated, prevent back navigation
       if (isCheckingAuth) return true;
       
-      // Check if user has a token
-      AsyncStorage.getItem('authToken').then(token => {
+      // Check if user has a token and determine appropriate home screen
+      AsyncStorage.getItem('authToken').then(async token => {
         if (token) {
-          // User is authenticated, prevent back and go to home
-          router.replace('/homeScreen');
+          const role = await AsyncStorage.getItem('userRole');
+          // Determine which screen to go back to based on role
+          switch (role) {
+            case 'admin':
+              router.replace('/adminHomeScreen');
+              break;
+            case 'doctor':
+              router.replace('/doctorHomeScreen');
+              break;
+            default:
+              router.replace('/homeScreen');
+          }
           return true;
         }
       }).catch(error => console.error('Error checking auth in back handler:', error));
@@ -51,8 +61,26 @@ const LoginScreen = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       if (token) {
-        console.log('User is already logged in, redirecting to home');
-        router.replace('/homeScreen');
+        // Get user role to determine which home screen to show
+        const role = await AsyncStorage.getItem('userRole');
+        console.log('User role detected:', role);
+        
+        // Redirect based on role
+        switch (role) {
+          case 'admin':
+            console.log('Redirecting to admin home screen');
+            router.replace('/adminHomeScreen');
+            break;
+          case 'doctor':
+            console.log('Redirecting to doctor home screen');
+            router.replace('/doctorHomeScreen');
+            break;
+          case 'user':
+          default:
+            console.log('Redirecting to regular home screen');
+            router.replace('/homeScreen');
+            break;
+        }
       }
     } catch (error) {
       console.error('Auth check failed:', error);
@@ -116,25 +144,53 @@ const LoginScreen = () => {
     
     setIsLoading(true);
     try {
-      // First check hardcoded credentials
-      if (email === 'Aditya' && password === 'waveDEEPdiaries') {
-        await AsyncStorage.setItem('authToken', 'hardcoded-token');
-        await AsyncStorage.setItem('userData', JSON.stringify({ username: 'Aditya' }));
-        router.replace('/homeScreen');
-        return;
-      }
+      // // First check hardcoded credentials
+      // if (email === 'Aditya' && password === 'waveDEEPdiaries') {
+      //   await AsyncStorage.setItem('authToken', 'hardcoded-token');
+      //   await AsyncStorage.setItem('userData', JSON.stringify({ username: 'Aditya' }));
+      //   router.replace('/homeScreen');
+      //   return;
+      // }
+      // console.log("login started")
 
-      // If not hardcoded user, try API login
       const response = await axios.post(`${BACKEND_URL}/api/users/login`, { email, password });
-      const { token } = response.data;
-      console.log(response.data);
-      console.log(token)
+      const { token, role } = response.data;
+      console.log('Login successful:', response.data);
 
+      // Store authentication token
       await AsyncStorage.setItem('authToken', token);
-      router.replace('/homeScreen');
+      
+      // Store user role for use throughout the app
+      await AsyncStorage.setItem('userRole', role);
+      
+      // Redirect based on user role
+      switch (role) {
+        case 'admin':
+          console.log('Admin login detected, redirecting to admin home');
+          router.replace('/adminHomeScreen');
+          break;
+        case 'doctor':
+          console.log('Doctor login detected, redirecting to doctor home');
+          router.replace('/doctorHomeScreen');
+          break;
+        case 'user':
+        default:
+          console.log('User login detected, redirecting to user home');
+          router.replace('/homeScreen');
+          break;
+      }
     } catch (error) {
-      console.log(error);
-      Alert.alert('Login Failed', 'Invalid username or password');
+      console.log('Login error:', error);
+      
+      // Handle pending doctor approval
+      if (axios.isAxiosError(error) && error.response?.status === 403 && error.response.data?.isPending) {
+        Alert.alert(
+          'Account Pending Approval',
+          'Your doctor account is awaiting administrator approval. You will be notified once approved.'
+        );
+      } else {
+        Alert.alert('Login Failed', 'Invalid username or password');
+      }
     } finally {
       setIsLoading(false);
     }

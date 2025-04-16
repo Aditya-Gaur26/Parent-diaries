@@ -49,7 +49,7 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['user', 'admin'],
+      enum: ['user', 'admin', 'doctor'],
       default: 'user',
     },
     mobile_number: String,
@@ -105,6 +105,27 @@ const UserSchema = new mongoose.Schema(
     },
     // Add children array to User schema
     children: [ChildSchema],
+    
+    // Doctor specific fields
+    specialization: {
+      type: String,
+      enum: ['Pediatrician', 'Neonatologist', 'Pediatric Neurologist', 'Pediatric Cardiologist', 'General Pediatrician'],
+      default: 'Pediatrician'
+    },
+    qualification: String,
+    licenseNumber: String,
+    experience: Number, // in years
+    hospitalAffiliation: String,
+    appointmentFee: Number,
+    bio: String,
+    isApproved: {
+      type: Boolean,
+      default: false,
+    },
+    registrationDate: {
+      type: Date,
+      default: Date.now,
+    }
   },
   { timestamps: true }
 );

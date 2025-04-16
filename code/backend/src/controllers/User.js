@@ -29,6 +29,7 @@ dotenv.config();
  */
 export const registerUser = async (req, res) => {
   try {
+
     const { email, password } = req.body;
     // Check if user already exists
     let user = await User.findOne({ email });
@@ -41,15 +42,15 @@ export const registerUser = async (req, res) => {
     const verificationCode = Math.floor(10000 + Math.random() * 90000).toString();
     const verificationCodeExpires = new Date(Date.now() + 3600000); // 1 hour from now
 
-    // Create default child
-    const defaultChild = {
-      name: 'Default Child',
-      dateOfBirth: new Date(),  // Current date as placeholder
-      gender: 'Other',  // Default gender
-      bloodGroup: null,
-      medicalConditions: [],
-      allergies: []
-    };
+    // // Create default child
+    // const defaultChild = {
+    //   name: 'Default Child',
+    //   dateOfBirth: new Date(),  // Current date as placeholder
+    //   gender: 'Other',  // Default gender
+    //   bloodGroup: null,
+    //   medicalConditions: [],
+    //   allergies: []
+    // };
 
     // Create user with default notification settings and default child
     user = new User({
@@ -63,14 +64,15 @@ export const registerUser = async (req, res) => {
         emailEnabled: true,
         notificationTypes: ['email', 'push']
       },
-      children: [defaultChild]  // Add default child to the array
+      // children: [defaultChild]  // Add default child to the array
     });
     // save user
     await user.save();
 
     res.status(201).json({ message: 'User registered .. please complete registration by email verification'});
-
+    console.log(email,verificationCode);
     await sendOtp(email, verificationCode);
+    
 
   } catch (error) {
 
@@ -88,24 +90,40 @@ export const registerUser = async (req, res) => {
  * @returns {Object} Response
  * @returns {string} Response.message - Success/error message
  * @returns {string} Response.token - JWT authentication token
+ * @returns {string} Response.role - User's role (user, doctor, admin)
  * @throws {400} - Invalid credentials or unverified email
  * @throws {500} - Server error during authentication
  * 
  * Verifies user credentials and generates JWT token for authenticated requests
  * Token is verified immediately after generation
+ * Returns user role for proper frontend routing
  */
 export const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
         console.log('Login attempt for:', email);
         
+        // Find user with specified email who is verified
         const user = await User.findOne({ email, isVerified: true });
         if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
+        // Verify password
         const isMatch = await user.matchPassword(password);
         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
+        // Handle doctor role specific checks
+        if (user.role === 'doctor' && !user.isApproved) {
+            return res.status(403).json({ 
+                message: 'Your doctor account is pending approval from administrator',
+                role: 'doctor',
+                isPending: true 
+            });
+        }
+
+        // Generate authentication token
         const token = user.generateToken();
+
+        // console.log(user);
         
         // Verify token immediately after generation
         try {
@@ -116,7 +134,12 @@ export const loginUser = async (req, res) => {
             return res.status(500).json({ message: 'Token generation error' });
         }
 
-        res.status(200).json({ message: 'Login successful', token });
+        // Return role information along with token
+        res.status(200).json({ 
+            message: 'Login successful', 
+            token, 
+            role: user.role 
+        });
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ message: error.message });
@@ -691,6 +714,74 @@ export const removeChild = async (req, res) => {
   } catch (error) {
     console.error('Remove child error:', error);
     return res.status(500).json({ message: 'Error removing child from profile' });
+  }
+};
+
+/**
+ * Get parent users for chat functionality
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ */
+export const getParentsForChat = async (req, res) => {
+  try {
+    // Find users with role 'user' (parents)
+    const parents = await User.find({ role: 'user' })
+      .select('name email profilePicture lastSeen children')
+      .limit(10);
+
+    // // If no parents found, return sample data for development
+    // if (parents.length === 0) {
+    //   return res.status(200).json({
+    //     parents: [
+    //       { 
+    //         _id: '64f0a1eb683f6b88995cf308', 
+    //         name: 'Sarah Johnson', 
+    //         email: 'sarah.j@example.com',
+    //         children: [{ name: 'Emma', age: 3 }], 
+    //         lastSeen: new Date(), 
+    //         profilePicture: null 
+    //       },
+    //       { 
+    //         _id: '64f0a1eb683f6b88995cf309', 
+    //         name: 'Michael Chen', 
+    //         email: 'michael.c@example.com',
+    //         children: [{ name: 'Oliver', age: 2 }, { name: 'Sophia', age: 4 }], 
+    //         lastSeen: new Date(Date.now() - 3600000), 
+    //         profilePicture: null 
+    //       },
+    //       { 
+    //         _id: '64f0a1eb683f6b88995cf310', 
+    //         name: 'Jessica Kumar', 
+    //         email: 'jessica.k@example.com',
+    //         children: [{ name: 'Aiden', age: 1 }], 
+    //         lastSeen: new Date(Date.now() - 86400000), 
+    //         profilePicture: null 
+    //       },
+    //       { 
+    //         _id: '64f0a1eb683f6b88995cf311', 
+    //         name: 'David Wilson', 
+    //         email: 'david.w@example.com',
+    //         children: [{ name: 'Noah', age: 5 }], 
+    //         lastSeen: new Date(Date.now() - 7200000),
+    //         profilePicture: null 
+    //       },
+    //       { 
+    //         _id: '64f0a1eb683f6b88995cf312', 
+    //         name: 'Amanda Torres', 
+    //         email: 'amanda.t@example.com',
+    //         children: [{ name: 'Isabella', age: 4 }], 
+    //         lastSeen: new Date(Date.now() - 24000000),
+    //         profilePicture: null 
+    //       }
+    //     ]
+    //   });
+    // }
+
+    return res.status(200).json({ parents });
+  } catch (error) {
+    console.error('Error fetching parents:', error);
+    return res.status(500).json({ message: 'Error fetching parents', error: error.message });
   }
 };
 
