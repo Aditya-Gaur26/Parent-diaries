@@ -40,7 +40,7 @@ import doctorRoutes from "./routes/Doctor.js";      // Doctor routes
 import adminRoutes from "./routes/Admin.js";        // Admin routes
 import chatRoutes from './routes/chat.js';          // Chat functionality routes
 import { Chat } from "openai/resources/index.mjs";
-
+import forumRoutes from './routes/forum.js';          // Forum routes
 
 /**
  * @type {Object}
@@ -137,6 +137,7 @@ app.use('/vaccination', vaccination);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/chat', chatRoutes)
+app.use('/api/forum', forumRoutes);
 
 // Make socket.io instance available to routes
 app.set('io', io);
