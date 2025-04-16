@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BACKEND_URL } from '../config/environment';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const NewPostScreen = () => {
   const [title, setTitle] = useState('');
@@ -44,57 +45,64 @@ const NewPostScreen = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="black" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create New Post</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="black" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Create New Post</Text>
+          <View style={{ width: 24 }} /> 
+        </View>
 
-      <View style={styles.form}>
-        <Text style={styles.label}>Title</Text>
-        <TextInput
-          style={styles.input}
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Enter post title"
-        />
+        <View style={styles.form}>
+          <Text style={styles.label}>Title</Text>
+          <TextInput
+            style={styles.input}
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Enter post title"
+          />
 
-        <Text style={styles.label}>Content</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={content}
-          onChangeText={setContent}
-          placeholder="Enter post content"
-          multiline
-        />
+          <Text style={styles.label}>Content</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={content}
+            onChangeText={setContent}
+            placeholder="Enter post content"
+            multiline
+          />
 
-        <Text style={styles.label}>Tags (comma-separated)</Text>
-        <TextInput
-          style={styles.input}
-          value={tags}
-          onChangeText={setTags}
-          placeholder="e.g., parenting, health"
-        />
+          <Text style={styles.label}>Tags (comma-separated)</Text>
+          <TextInput
+            style={styles.input}
+            value={tags}
+            onChangeText={setTags}
+            placeholder="e.g., parenting, health"
+          />
 
-        <TouchableOpacity 
-          style={[styles.button, loading && styles.buttonDisabled]} 
-          onPress={handleSubmit} 
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Submit</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          <TouchableOpacity 
+            style={[styles.button, loading && styles.buttonDisabled]} 
+            onPress={handleSubmit} 
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Submit</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
   container: {
     flexGrow: 1,
     backgroundColor: '#fff',

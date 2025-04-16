@@ -38,6 +38,7 @@ export const getPosts = async (req, res) => {
 
 export const getPost = async (req, res) => {
   try {
+    console.log("hi")
     const post = await ForumPost.findById(req.params.postId)
       .populate('author', 'name')
       .populate({
@@ -51,6 +52,7 @@ export const getPost = async (req, res) => {
     
     res.json(post);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -68,8 +70,9 @@ export const addComment = async (req, res) => {
     
     await comment.save();
     
-    // Update post's answer count
+    // Update post's comments array and answer count
     await ForumPost.findByIdAndUpdate(postId, {
+      $push: { comments: comment._id },
       $inc: { answerCount: 1 }
     });
     
@@ -181,7 +184,9 @@ export const deleteComment = async (req, res) => {
       return res.status(403).json({ message: 'You can only delete your own comments' });
     }
     
+    // Update post's comments array and answer count
     await ForumPost.findByIdAndUpdate(comment.post, {
+      $pull: { comments: comment._id },
       $inc: { answerCount: -1 }
     });
     
@@ -194,7 +199,7 @@ export const deleteComment = async (req, res) => {
 
 export const votePost = async (req, res) => {
   try {
-    const { type } = req.body; // 'up' or 'down'
+    const { type, voteType } = req.body;
     const post = await ForumPost.findById(req.params.postId);
     
     if (!post) {
@@ -202,20 +207,26 @@ export const votePost = async (req, res) => {
     }
     
     const userId = req.user.id;
-    
-    if (type === 'up') {
-      if (post.upvotes.includes(userId)) {
-        post.upvotes.pull(userId);
+
+    if (type === 'remove') {
+      // Remove vote
+      if (voteType === 'up') {
+        post.upvotes = post.upvotes.filter(id => id.toString() !== userId);
       } else {
-        post.upvotes.addToSet(userId);
-        post.downvotes.pull(userId);
+        post.downvotes = post.downvotes.filter(id => id.toString() !== userId);
       }
-    } else if (type === 'down') {
-      if (post.downvotes.includes(userId)) {
-        post.downvotes.pull(userId);
-      } else {
-        post.downvotes.addToSet(userId);
-        post.upvotes.pull(userId);
+    } else {
+      // Add or change vote
+      if (type === 'up') {
+        if (!post.upvotes.includes(userId)) {
+          post.upvotes.push(userId);
+          post.downvotes = post.downvotes.filter(id => id.toString() !== userId);
+        }
+      } else if (type === 'down') {
+        if (!post.downvotes.includes(userId)) {
+          post.downvotes.push(userId);
+          post.upvotes = post.upvotes.filter(id => id.toString() !== userId);
+        }
       }
     }
     
@@ -228,7 +239,7 @@ export const votePost = async (req, res) => {
 
 export const voteComment = async (req, res) => {
   try {
-    const { type } = req.body; // 'up' or 'down'
+    const { type, voteType } = req.body;
     const comment = await ForumComment.findById(req.params.commentId);
     
     if (!comment) {
@@ -236,20 +247,26 @@ export const voteComment = async (req, res) => {
     }
     
     const userId = req.user.id;
-    
-    if (type === 'up') {
-      if (comment.upvotes.includes(userId)) {
-        comment.upvotes.pull(userId);
+
+    if (type === 'remove') {
+      // Remove vote
+      if (voteType === 'up') {
+        comment.upvotes = comment.upvotes.filter(id => id.toString() !== userId);
       } else {
-        comment.upvotes.addToSet(userId);
-        comment.downvotes.pull(userId);
+        comment.downvotes = comment.downvotes.filter(id => id.toString() !== userId);
       }
-    } else if (type === 'down') {
-      if (comment.downvotes.includes(userId)) {
-        comment.downvotes.pull(userId);
-      } else {
-        comment.downvotes.addToSet(userId);
-        comment.upvotes.pull(userId);
+    } else {
+      // Add or change vote
+      if (type === 'up') {
+        if (!comment.upvotes.includes(userId)) {
+          comment.upvotes.push(userId);
+          comment.downvotes = comment.downvotes.filter(id => id.toString() !== userId);
+        }
+      } else if (type === 'down') {
+        if (!comment.downvotes.includes(userId)) {
+          comment.downvotes.push(userId);
+          comment.upvotes = comment.upvotes.filter(id => id.toString() !== userId);
+        }
       }
     }
     

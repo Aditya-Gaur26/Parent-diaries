@@ -4,16 +4,16 @@ const ForumPostSchema = new mongoose.Schema({
   author: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    // required: true
+    required: true
   },
   title: {
     type: String,
-    // required: true,
+    required: true,
     trim: true
   },
   content: {
     type: String,
-    // required: true
+    required: true
   },
   tags: [{
     type: String,
@@ -26,6 +26,10 @@ const ForumPostSchema = new mongoose.Schema({
   downvotes: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  }],
+  comments: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ForumComment'
   }],
   answerCount: {
     type: Number,

@@ -4,16 +4,16 @@ const ForumCommentSchema = new mongoose.Schema({
   post: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'ForumPost',
-    // required: true
+    required: true
   },
   author: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    // required: true
+    required: true
   },
   content: {
     type: String,
-    // required: true
+    required: true
   },
   upvotes: [{
     type: mongoose.Schema.Types.ObjectId,

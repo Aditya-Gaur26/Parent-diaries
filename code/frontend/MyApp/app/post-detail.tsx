@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BACKEND_URL } from '../config/environment';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const PostDetailScreen = () => {
   const router = useRouter();
@@ -16,17 +17,61 @@ const PostDetailScreen = () => {
   const [loading, setLoading] = useState(true);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [userId, setUserId] = useState(null);
+
+  useEffect(() => {
+    const getUserId = async () => {
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        if (token) {
+          const base64Url = token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          }).join(''));
+          const { id } = JSON.parse(jsonPayload);
+          setUserId(id);
+        }
+      } catch (error) {
+        console.error('Error getting user ID:', error);
+      }
+    };
+    getUserId();
+  }, []);
 
   const fetchPost = async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        Alert.alert('Error', 'Authentication required');
+        router.replace('/login');
+        return;
+      }
+
       const response = await axios.get(`${BACKEND_URL}/api/forum/posts/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` }
       });
+
+      if (!response.data) {
+        throw new Error('Post not found');
+      }
+
       setPost(response.data);
     } catch (error) {
       console.error('Error fetching post:', error);
-      Alert.alert('Error', 'Failed to fetch post details');
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 404) {
+          Alert.alert('Error', 'Post not found');
+          router.back();
+        } else if (error.response?.status === 401) {
+          Alert.alert('Error', 'Please login again');
+          router.replace('/login');
+        } else {
+          Alert.alert('Error', 'Failed to load post. Please try again later.');
+        }
+      } else {
+        Alert.alert('Error', 'An unexpected error occurred');
+      }
     } finally {
       setLoading(false);
     }
@@ -42,27 +87,55 @@ const PostDetailScreen = () => {
     setSubmitting(true);
     try {
       const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        Alert.alert('Error', 'Authentication required');
+        router.replace('/login');
+        return;
+      }
+
       await axios.post(
         `${BACKEND_URL}/api/forum/posts/${id}/comments`,
-        { content: comment },
+        { content: comment.trim() },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setComment('');
       fetchPost();
     } catch (error) {
       console.error('Error adding comment:', error);
-      Alert.alert('Error', 'Failed to add comment');
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 401) {
+          Alert.alert('Error', 'Please login again');
+          router.replace('/login');
+        } else {
+          Alert.alert('Error', 'Failed to add comment. Please try again.');
+        }
+      } else {
+        Alert.alert('Error', 'An unexpected error occurred');
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
+  const isUpvoted = (votes = []) => {
+    return Array.isArray(votes) && votes.includes(userId);
+  };
+
+  const isDownvoted = (votes = []) => {
+    return Array.isArray(votes) && votes.includes(userId);
+  };
+
   const handleVotePost = async (type: 'up' | 'down') => {
     try {
       const token = await AsyncStorage.getItem('authToken');
+      const currentVoteStatus = type === 'up' ? isUpvoted(post.upvotes) : isDownvoted(post.downvotes);
+
       await axios.post(
         `${BACKEND_URL}/api/forum/posts/${id}/vote`,
-        { type },
+        { 
+          type: currentVoteStatus ? 'remove' : type,
+          voteType: type
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchPost();
@@ -75,9 +148,15 @@ const PostDetailScreen = () => {
   const handleVoteComment = async (commentId: string, type: 'up' | 'down') => {
     try {
       const token = await AsyncStorage.getItem('authToken');
+      const comment = post.comments.find(c => c._id === commentId);
+      const currentVoteStatus = type === 'up' ? isUpvoted(comment?.upvotes) : isDownvoted(comment?.downvotes);
+
       await axios.post(
         `${BACKEND_URL}/api/forum/comments/${commentId}/vote`,
-        { type },
+        { 
+          type: currentVoteStatus ? 'remove' : type,
+          voteType: type
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchPost();
@@ -102,87 +181,122 @@ const PostDetailScreen = () => {
     }
   };
 
+  const renderVoteButtons = (item, itemType = 'post') => (
+    <View style={styles.voteContainer}>
+      <TouchableOpacity 
+        style={[
+          styles.voteButton,
+          isUpvoted(item.upvotes) && styles.voteButtonActive
+        ]}
+        onPress={() => itemType === 'post' ? handleVotePost('up') : handleVoteComment(item._id, 'up')}
+      >
+        <Ionicons 
+          name="arrow-up" 
+          size={itemType === 'post' ? 24 : 20} 
+          color={isUpvoted(item.upvotes) ? "#fff" : "#4CAF50"}
+        />
+      </TouchableOpacity>
+      <Text style={styles.voteCount}>
+        {(item.upvotes?.length || 0) - (item.downvotes?.length || 0)}
+      </Text>
+      <TouchableOpacity 
+        style={[
+          styles.voteButton,
+          isDownvoted(item.downvotes) && styles.voteButtonDownActive
+        ]}
+        onPress={() => itemType === 'post' ? handleVotePost('down') : handleVoteComment(item._id, 'down')}
+      >
+        <Ionicons 
+          name="arrow-down" 
+          size={itemType === 'post' ? 24 : 20} 
+          color={isDownvoted(item.downvotes) ? "#fff" : "#F44336"}
+        />
+      </TouchableOpacity>
+    </View>
+  );
+
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4CAF50" />
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (!post) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Post not found</Text>
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Post not found</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView style={styles.content}>
-        <Text style={styles.title}>{post.title}</Text>
-        <Text style={styles.author}>By {post.author.name}</Text>
-        <Text style={styles.body}>{post.content}</Text>
-
-        <View style={styles.voteContainer}>
-          <TouchableOpacity onPress={() => handleVotePost('up')}>
-            <Ionicons name="arrow-up" size={24} color="#4CAF50" />
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#000" />
           </TouchableOpacity>
-          <Text style={styles.voteCount}>{post.upvotes.length - post.downvotes.length}</Text>
-          <TouchableOpacity onPress={() => handleVotePost('down')}>
-            <Ionicons name="arrow-down" size={24} color="#F44336" />
+          <Text style={styles.headerTitle}>Discussion</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <ScrollView style={styles.content}>
+          <Text style={styles.title}>{post.title}</Text>
+          <Text style={styles.author}>By {post.author.name}</Text>
+          <Text style={styles.body}>{post.content}</Text>
+
+          {renderVoteButtons(post, 'post')}
+
+          <Text style={styles.sectionTitle}>Comments</Text>
+          {post.comments.map((comment) => (
+            <View key={comment._id} style={styles.comment}>
+              <Text style={styles.commentAuthor}>{comment.author.name}</Text>
+              <Text style={styles.commentContent}>{comment.content}</Text>
+              <View style={styles.commentActions}>
+                {renderVoteButtons(comment, 'comment')}
+                {post.author._id === comment.author._id && !comment.isAnswer && (
+                  <TouchableOpacity onPress={() => handleMarkAnswer(comment._id)}>
+                    <Text style={styles.markAnswer}>Mark as Answer</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+
+        <View style={styles.commentInputContainer}>
+          <TextInput
+            style={styles.commentInput}
+            placeholder="Add a comment..."
+            value={comment}
+            onChangeText={setComment}
+          />
+          <TouchableOpacity
+            style={styles.submitButton}
+            onPress={handleAddComment}
+            disabled={submitting}
+          >
+            <Text style={styles.submitButtonText}>Submit</Text>
           </TouchableOpacity>
         </View>
-
-        <Text style={styles.sectionTitle}>Comments</Text>
-        {post.comments.map((comment) => (
-          <View key={comment._id} style={styles.comment}>
-            <Text style={styles.commentAuthor}>{comment.author.name}</Text>
-            <Text style={styles.commentContent}>{comment.content}</Text>
-            <View style={styles.commentActions}>
-              <TouchableOpacity onPress={() => handleVoteComment(comment._id, 'up')}>
-                <Ionicons name="arrow-up" size={20} color="#4CAF50" />
-              </TouchableOpacity>
-              <Text style={styles.voteCount}>
-                {comment.upvotes.length - comment.downvotes.length}
-              </Text>
-              <TouchableOpacity onPress={() => handleVoteComment(comment._id, 'down')}>
-                <Ionicons name="arrow-down" size={20} color="#F44336" />
-              </TouchableOpacity>
-              {post.author._id === comment.author._id && !comment.isAnswer && (
-                <TouchableOpacity onPress={() => handleMarkAnswer(comment._id)}>
-                  <Text style={styles.markAnswer}>Mark as Answer</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        ))}
-      </ScrollView>
-
-      <View style={styles.commentInputContainer}>
-        <TextInput
-          style={styles.commentInput}
-          placeholder="Add a comment..."
-          value={comment}
-          onChangeText={setComment}
-        />
-        <TouchableOpacity
-          style={styles.submitButton}
-          onPress={handleAddComment}
-          disabled={submitting}
-        >
-          <Text style={styles.submitButtonText}>Submit</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
@@ -207,7 +321,8 @@ const styles = StyleSheet.create({
   voteContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginVertical: 12,
+    justifyContent: 'center',
   },
   voteCount: {
     marginHorizontal: 8,
@@ -236,6 +351,7 @@ const styles = StyleSheet.create({
   commentActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 8,
   },
   markAnswer: {
     marginLeft: 16,
@@ -281,6 +397,29 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     color: '#f00',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  voteButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'transparent',
+  },
+  voteButtonActive: {
+    backgroundColor: '#4CAF50',
+  },
+  voteButtonDownActive: {
+    backgroundColor: '#F44336',
   },
 });
 
