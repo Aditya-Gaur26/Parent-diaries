@@ -35,7 +35,7 @@ paths:
     get:
       tags:
         - System
-      summary: Landing Page
+      summary: Backend Connection Tester
       responses:
         '200':
           description: Server is operational
@@ -48,7 +48,7 @@ paths:
                     type: string
 
   # Test Route
-  /user:
+  /api/users:
     get:
       tags:
         - System
@@ -63,7 +63,7 @@ paths:
                 example: User route is working!
 
   # Authentication Routes
-  /user/signup:
+  /api/users/signup:
     post:
       tags:
         - Authentication
@@ -87,7 +87,7 @@ paths:
         '400':
           description: Invalid input data
 
-  /user/login:
+  /api/users/login:
     post:
       tags:
         - Authentication
@@ -114,7 +114,7 @@ paths:
                   token:
                     type: string
 
-  /user/verify_email:
+  /api/users/verify_email:
     post:
       tags:
         - Authentication
@@ -132,7 +132,7 @@ paths:
         '200':
           description: Email verified successfully
 
-  /user/forgot-password:
+  /api/users/forgot-password:
     post:
       tags:
         - Authentication
@@ -150,7 +150,7 @@ paths:
         '200':
           description: Password reset email sent
 
-  /user/reset-password:
+  /api/users/reset-password:
     post:
       tags:
         - Authentication
@@ -162,16 +162,28 @@ paths:
             schema:
               type: object
               properties:
-                token:
+                email:
+                  type: string
+                resetCode:
                   type: string
                 newPassword:
                   type: string
+              required:
+                - email
+                - resetCode
+                - newPassword
       responses:
         '200':
           description: Password reset successful
+        '400':
+          description: Invalid or expired reset code
+        '404':
+          description: User not found
+        '500':
+          description: Server error
 
   # Profile Routes
-  /user/profile:
+  /api/users/profile:
     get:
       tags:
         - Profile
@@ -202,7 +214,7 @@ paths:
         '200':
           description: Profile updated successfully
 
-  /user/notification-settings:
+  /api/users/notification-settings:
     post:
       tags:
         - Profile
@@ -224,7 +236,7 @@ paths:
         '200':
           description: Notification settings updated
 
-  /user/children:
+  /api/users/children:
     post:
       tags:
         - Children
@@ -256,7 +268,7 @@ paths:
         '200':
           description: List of children retrieved successfully
 
-  /user/children/{childId}:
+  /api/users/children/{childId}:
     put:
       tags:
         - Children
@@ -300,7 +312,7 @@ paths:
         '200':
           description: Child removed successfully
 
-  /user/get-subscription:
+  /api/users/get-subscription:
     get:
       tags:
         - Subscription
@@ -311,7 +323,7 @@ paths:
         '200':
           description: Subscription details retrieved successfully
 
-  /user/update-subscription:
+  /api/users/update-subscription:
     post:
       tags:
         - Subscription
@@ -331,7 +343,7 @@ paths:
         '200':
           description: Subscription updated successfully
 
-  /user/report-issue:
+  /api/users/report-issue:
     post:
       tags:
         - Report
@@ -353,7 +365,7 @@ paths:
         '200':
           description: Issue reported successfully
 
-  /user/parents-for-chat:
+  /api/users/parents-for-chat:
     get:
       tags:
         - Social

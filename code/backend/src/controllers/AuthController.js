@@ -44,7 +44,6 @@ export const registerUser = async (req, res) => {
 
     // Send response and verification email
     res.status(201).json({ message: 'User registered .. please complete registration by email verification'});
-    console.log(email,verificationCode);
     await sendOtp(email, verificationCode);
   } catch (error) {
     res.status(500).json({ message: error.message });

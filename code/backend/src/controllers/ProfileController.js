@@ -9,34 +9,71 @@ export const getUserProfile = async (req, res) => {
   }
 };
 
+const validateMobileNumber = (mobile_number) => {
+  const phoneRegex = /^\+?[\d\s-]{10,}$/;
+  if (!phoneRegex.test(mobile_number)) {
+    throw new Error("Invalid mobile number format");
+  }
+  return mobile_number;
+};
+
+const validateSpecialization = (specialization, user) => {
+  if (!user.constructor.schema.path('specialization').enumValues.includes(specialization)) {
+    throw new Error("Invalid specialization");
+  }
+  return specialization;
+};
+
+const validateAndFormatDate = (dob) => {
+  const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  if (!dateRegex.test(dob)) {
+    throw new Error("Invalid date format. Use DD/MM/YYYY");
+  }
+  const parts = dob.split('/');
+  const formattedDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+  if (isNaN(formattedDate.getTime())) {
+    throw new Error("Invalid date");
+  }
+  return formattedDate;
+};
+
 // Controller to update user profile information
 export const changeUserProfile = async (req, res) => {
   try {
-    // Extract updated fields from request body
-    const { name, email, mobile_number, dob } = req.body;
-    // Find user by ID and exclude password field
+    const { name, mobile_number, dob, bio, specialization } = req.body;
     let user = await User.findById(req.user.id).select("-password");
 
-    // Update only the fields that are provided
-    if (name) user.name = name;
-    if (mobile_number) user.mobile_number = mobile_number;
-    if (dob) {
-      // Convert DD/MM/YYYY format to Date object
-      const parts = dob.split('/');
-      const formattedDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-      user.dob = formattedDate;
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    // Save updated user profile
-    await user.save();
+    try {
+      if (mobile_number) {
+        user.mobile_number = validateMobileNumber(mobile_number);
+      }
+      if (name) user.name = name;
+      if (bio) user.bio = bio;
+      if (specialization && user.role === 'doctor') {
+        user.specialization = validateSpecialization(specialization, user);
+      }
+      if (dob) {
+        user.dob = validateAndFormatDate(dob);
+      }
 
-    return res.status(200).json({
-      message: "Profile updated successfully",
-      user
-    });
+      await user.save();
+      return res.status(200).json({
+        message: "Profile updated successfully",
+        user
+      });
+    } catch (validationError) {
+      return res.status(400).json({ message: validationError.message });
+    }
 
   } catch (error) {
-    return res.status(500).json({ message: error.message || "Internal Server Error" });
+    return res.status(500).json({ 
+      message: "Failed to update profile",
+      error: error.message 
+    });
   }
 };
 

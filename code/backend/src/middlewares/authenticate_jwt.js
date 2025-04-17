@@ -1,55 +1,51 @@
+// Import required packages and models
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import User from "../models/User.js";
 
+// Load environment variables from .env file
 dotenv.config();
 
 const authenticate_jwt = async (req, res, next) => {
-    console.log("Request headers:", req.headers);
-    // console.log("Authentication HEader",req.header)
+    // Get the Authorization header from the request
     const authHeader = req.headers.authorization;
-    
-    // console.log("Auth Header:", authHeader);
-    // console.log("Request headers:", req.headers);
+    // Check if Authorization header exists and starts with 'Bearer '
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ message: "No token provided" });
     }
-    // console.log(authHeader);
     try {
+        // Extract the token from the Authorization header
         const token = authHeader.split(" ")[1];
-        console.log("Received token:", token);
         
+        // Ensure JWT_SECRET is configured in environment variables
         if (!process.env.JWT_SECRET) {
             console.error("JWT_SECRET is not defined in environment variables");
             return res.status(500).json({ message: "Server configuration error" });
         }
-        
-        // try {
-        //     const tokenParts = token.split('.');
-        //     console.log("Token header:", Buffer.from(tokenParts[0], 'base64').toString());
-        //     console.log("Token payload:", Buffer.from(tokenParts[1], 'base64').toString());
-        // } catch (e) {
-        //     console.error("Error decoding token parts:", e);
-        // }
-        
+
+        // Verify the JWT token using the secret key
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
+        // Double-check that token verification returned a valid payload
         if (!decoded) {
             console.error("Token verification returned null/undefined");
             return res.status(401).json({ message: "Token verification failed" });
         }
-        
-        // console.log("Decoded token:", JSON.stringify(decoded, null, 2));
+        // Find the user in database using the decoded ID, excluding the password field
         req.user = await User.findById(decoded.id).select("-password");
 
+        // Check if user exists in the database
         if (!req.user) {
             return res.status(401).json({ message: "User not found" });
         }
 
+        // Attach the token to the request object for potential future use
         req.authToken = token;
 
+        // Proceed to the next middleware or route handler
         next();
     } catch (err) {
+        // Handle any errors during token verification or user lookup
         return res.status(401).json({ message: "Invalid token", error: err.message });
     }
 };
