@@ -208,11 +208,35 @@ paths:
               properties:
                 name:
                   type: string
+                mobile_number:
+                  type: string
+                  description: Must be a valid phone number with optional + prefix
+                dob:
+                  type: string
+                  description: Date in DD/MM/YYYY format
                 bio:
                   type: string
+                specialization:
+                  type: string
+                  description: Required only for doctors
       responses:
         '200':
           description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    type: object
+        '400':
+          description: Invalid input data
+        '404':
+          description: User not found
+        '500':
+          description: Server error
 
   /api/users/notification-settings:
     post:

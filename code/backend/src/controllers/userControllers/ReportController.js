@@ -1,5 +1,5 @@
 // Import the Report model for database operations
-import Report from '../models/Report.js';
+import Report from '../../models/Report.js';
 
 // Controller function to handle issue reporting
 export const reportIssue = async (req, res) => {

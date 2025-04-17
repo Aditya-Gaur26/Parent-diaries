@@ -1,10 +1,10 @@
 import express from 'express';
 import authenticate_jwt from '../middlewares/authenticate_jwt.js';
-import { registerUser, loginUser, verifyEmail, forgotPassword, resetPassword } from '../controllers/AuthController.js';
-import { getUserProfile, changeUserProfile, setNotificationSettings, getParentsForChat } from '../controllers/ProfileController.js';
-import { addChild, getChildren, updateChild, removeChild } from '../controllers/ChildController.js';
-import { getSubscription, updateSubscription } from '../controllers/SubscriptionController.js';
-import { reportIssue } from '../controllers/ReportController.js';
+import { registerUser, loginUser, verifyEmail, forgotPassword, resetPassword } from '../controllers/userControllers/AuthController.js';
+import { getUserProfile, changeUserProfile, setNotificationSettings, getParentsForChat } from '../controllers/userControllers/ProfileController.js';
+import { addChild, getChildren, updateChild, removeChild } from '../controllers/userControllers/ChildController.js';
+import { getSubscription, updateSubscription } from '../controllers/userControllers/SubscriptionController.js';
+import { reportIssue } from '../controllers/userControllers/ReportController.js';
 
 const router = express.Router();
 

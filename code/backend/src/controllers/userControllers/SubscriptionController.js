@@ -1,5 +1,5 @@
 // Import Subscription model for database operations
-import Subscription from '../models/Subscription.js';
+import Subscription from '../../models/Subscription.js';
 
 // Controller to get user's subscription details
 export const getSubscription = async (req, res) => {

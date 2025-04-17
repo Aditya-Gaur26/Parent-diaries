@@ -1,5 +1,5 @@
 // Import User model for database operations
-import User from '../models/User.js';
+import User from '../../models/User.js';
 
 // Controller to add a new child to user's profile
 export const addChild = async (req, res) => {

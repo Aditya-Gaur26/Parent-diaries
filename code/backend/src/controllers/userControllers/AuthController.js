@@ -1,9 +1,9 @@
 // Import required dependencies
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
-import Subscription from '../models/Subscription.js';
-import { sendOtp } from '../services/send_otp.js';
-import { sendResetOtp } from '../services/send_reset_otp.js';
+import User from '../../models/User.js';
+import Subscription from '../../models/Subscription.js';
+import { sendOtp } from '../../services/send_otp.js';
+import { sendResetOtp } from '../../services/send_reset_otp.js';
 import dotenv from "dotenv";
 
 // Load environment variables
@@ -18,7 +18,7 @@ export const registerUser = async (req, res) => {
     let user = await User.findOne({ email });
     if (user) {
       // If user exists and is verified, reject registration
-      if (user.isVerified === true) return res.status(400).json({ message: 'User already exists' });
+      if (user.isVerified === true) return res.status(409).json({ message: 'User already exists' });
       // If user exists but isn't verified, delete old record
       else await User.findByIdAndDelete(user._id);
     }
@@ -57,11 +57,11 @@ export const loginUser = async (req, res) => {
         
         // Find verified user
         const user = await User.findOne({ email, isVerified: true });
-        if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+        if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
         // Verify password
         const isMatch = await user.matchPassword(password);
-        if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+        if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
 
         // Check doctor approval status
         if (user.role === 'doctor' && !user.isApproved) {
