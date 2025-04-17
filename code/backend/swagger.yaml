@@ -10,9 +10,29 @@ servers:
       port:
         default: '5000'
         description: The API server port. Defaults to 5000 if PORT env variable is not set
+
+tags:
+  - name: System
+    description: Basic system health check endpoints
+  - name: Authentication
+    description: User authentication and authorization endpoints
+  - name: Profile
+    description: User profile and notification management
+  - name: Children
+    description: Child information management
+  - name: Subscription
+    description: Subscription plan management
+  - name: Report
+    description: Issue reporting system
+  - name: Social
+    description: Social and community features
+
 paths:
+  # System Routes
   /:
     get:
+      tags:
+        - System
       summary: Landing Page
       responses:
         '200':
@@ -24,4 +44,328 @@ paths:
                 properties:
                   message:
                     type: string
+
+  # Test Route
+  /user:
+    get:
+      tags:
+        - System
+      summary: Test route
+      responses:
+        '200':
+          description: Test response
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: User route is working!
+
+  # Authentication Routes
+  /user/signup:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+                name:
+                  type: string
+      responses:
+        '201':
+          description: User registered successfully
+        '400':
+          description: Invalid input data
+
+  /user/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+
+  /user/verify_email:
+    post:
+      tags:
+        - Authentication
+      summary: Verify user email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Email verified successfully
+
+  /user/forgot-password:
+    post:
+      tags:
+        - Authentication
+      summary: Request password reset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+      responses:
+        '200':
+          description: Password reset email sent
+
+  /user/reset-password:
+    post:
+      tags:
+        - Authentication
+      summary: Reset password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                newPassword:
+                  type: string
+      responses:
+        '200':
+          description: Password reset successful
+
+  # Profile Routes
+  /user/profile:
+    get:
+      tags:
+        - Profile
+      summary: Get user profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved successfully
+    put:
+      tags:
+        - Profile
+      summary: Update user profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                bio:
+                  type: string
+      responses:
+        '200':
+          description: Profile updated successfully
+
+  /user/notification-settings:
+    post:
+      tags:
+        - Profile
+      summary: Update notification settings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                emailNotifications:
+                  type: boolean
+                pushNotifications:
+                  type: boolean
+      responses:
+        '200':
+          description: Notification settings updated
+
+  /user/children:
+    post:
+      tags:
+        - Children
+      summary: Add a new child
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                dateOfBirth:
+                  type: string
+                  format: date
+      responses:
+        '201':
+          description: Child added successfully
+    get:
+      tags:
+        - Children
+      summary: Get all children
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of children retrieved successfully
+
+  /user/children/{childId}:
+    put:
+      tags:
+        - Children
+      summary: Update child information
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: childId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                dateOfBirth:
+                  type: string
+                  format: date
+      responses:
+        '200':
+          description: Child information updated successfully
+    delete:
+      tags:
+        - Children
+      summary: Remove a child
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: childId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Child removed successfully
+
+  /user/get-subscription:
+    get:
+      tags:
+        - Subscription
+      summary: Get user subscription details
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Subscription details retrieved successfully
+
+  /user/update-subscription:
+    post:
+      tags:
+        - Subscription
+      summary: Update subscription
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                planId:
+                  type: string
+      responses:
+        '200':
+          description: Subscription updated successfully
+
+  /user/report-issue:
+    post:
+      tags:
+        - Report
+      summary: Report an issue
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Issue reported successfully
+
+  /user/parents-for-chat:
+    get:
+      tags:
+        - Social
+      summary: Get list of parents available for chat
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of parents retrieved successfully
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 
