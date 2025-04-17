@@ -1,0 +1,27 @@
+openapi: 3.0.0
+info:
+  title: Parent Diaries API
+  version: 1.0.0
+  description: API documentation for the Parent Diaries
+servers:
+  - url: http://localhost:{port}
+    description: Local development server
+    variables:
+      port:
+        default: '5000'
+        description: The API server port. Defaults to 5000 if PORT env variable is not set
+paths:
+  /:
+    get:
+      summary: Landing Page
+      responses:
+        '200':
+          description: Server is operational
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
