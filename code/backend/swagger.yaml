@@ -26,6 +26,8 @@ tags:
     description: Issue reporting system
   - name: Social
     description: Social and community features
+  - name: Admin
+    description: Administrator-only endpoints for managing doctors and reports
 
 paths:
   # System Routes
@@ -361,6 +363,260 @@ paths:
       responses:
         '200':
           description: List of parents retrieved successfully
+
+  # Admin Routes
+  /api/admin:
+    get:
+      tags:
+        - Admin
+      summary: Test admin route
+      responses:
+        '200':
+          description: Admin route health check
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Admin route is working!
+
+  /api/admin/register-doctor:
+    post:
+      tags:
+        - Admin
+      summary: Register a new doctor account
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                mobile_number:
+                  type: string
+                dob:
+                  type: string
+                  description: Date in DD-MM-YYYY, DD/MM/YYYY, or YYYY-MM-DD format
+                specialization:
+                  type: string
+                qualification:
+                  type: string
+                licenseNumber:
+                  type: string
+                experience:
+                  type: string
+                hospitalAffiliation:
+                  type: string
+                appointmentFee:
+                  type: number
+                bio:
+                  type: string
+                isApproved:
+                  type: boolean
+                  default: false
+      responses:
+        '201':
+          description: Doctor registered successfully
+        '400':
+          description: Invalid input or doctor already exists
+        '401':
+          description: Unauthorized - Admin access required
+
+  /api/admin/doctors:
+    get:
+      tags:
+        - Admin
+      summary: Get all registered doctors
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of all doctors
+        '401':
+          description: Unauthorized - Admin access required
+
+  /api/admin/doctors/{doctorId}:
+    get:
+      tags:
+        - Admin
+      summary: Get specific doctor details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: doctorId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Doctor details retrieved successfully
+        '404':
+          description: Doctor not found
+    put:
+      tags:
+        - Admin
+      summary: Update doctor details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: doctorId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                isApproved:
+                  type: boolean
+                name:
+                  type: string
+                specialization:
+                  type: string
+                # Other updateable fields...
+      responses:
+        '200':
+          description: Doctor updated successfully
+        '404':
+          description: Doctor not found
+    delete:
+      tags:
+        - Admin
+      summary: Delete a doctor
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: doctorId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Doctor deleted successfully
+        '404':
+          description: Doctor not found
+
+  /api/admin/reports:
+    get:
+      tags:
+        - Admin
+      summary: Get all user reports
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [Open, In Progress, Resolved, Closed]
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Reports retrieved successfully
+
+  /api/admin/reports/{reportId}:
+    get:
+      tags:
+        - Admin
+      summary: Get specific report details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Report details retrieved successfully
+        '404':
+          description: Report not found
+
+  /api/admin/reports/{reportId}/status:
+    put:
+      tags:
+        - Admin
+      summary: Update report status
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [Open, In Progress, Resolved, Closed]
+      responses:
+        '200':
+          description: Report status updated successfully
+        '404':
+          description: Report not found
+
+  /api/admin/reports/{reportId}/reply:
+    post:
+      tags:
+        - Admin
+      summary: Reply to a report
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+      responses:
+        '200':
+          description: Reply sent successfully
+        '207':
+          description: Reply saved but email notification failed
+        '404':
+          description: Report not found
 
 components:
   securitySchemes:
