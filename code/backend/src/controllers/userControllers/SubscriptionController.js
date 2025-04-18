@@ -38,44 +38,95 @@ export const getSubscription = async (req, res) => {
   }
 };
 
-// Controller to update subscription status
+// Helper functions
+const validateSubscriptionInput = (type, autoRenew, paymentMethod) => {
+  if (type && !['free', 'premium'].includes(type)) {
+    throw new Error('Invalid subscription type');
+  }
+
+  if (autoRenew !== undefined && typeof autoRenew !== 'boolean') {
+    throw new Error('autoRenew must be a boolean');
+  }
+
+  if (paymentMethod) {
+    if (!paymentMethod.cardType || !paymentMethod.lastFourDigits) {
+      throw new Error('Payment method must include cardType and lastFourDigits');
+    }
+    if (typeof paymentMethod.cardType !== 'string' || 
+        typeof paymentMethod.lastFourDigits !== 'string') {
+      throw new Error('cardType and lastFourDigits must be strings');
+    }
+    if (!/^\d{4}$/.test(paymentMethod.lastFourDigits)) {
+      throw new Error('lastFourDigits must be exactly 4 digits');
+    }
+  }
+};
+
+const handlePremiumUpgrade = (subscription, autoRenew, paymentMethod) => {
+  const startDate = new Date();
+  const expiryDate = new Date();
+  expiryDate.setDate(expiryDate.getDate() + 30);
+
+  subscription.type = 'premium';
+  subscription.startDate = startDate;
+  subscription.expiryDate = expiryDate;
+  subscription.autoRenew = autoRenew !== undefined ? autoRenew : true;
+
+  if (paymentMethod) {
+    subscription.paymentMethod = paymentMethod;
+  }
+
+  subscription.transactionHistory.push({
+    amount: 250,
+    date: new Date(),
+    status: 'successful',
+    description: 'Premium subscription purchase'
+  });
+};
+
+const handlePremiumRenewal = (subscription, paymentMethod) => {
+  const expiryDate = new Date(subscription.expiryDate || new Date());
+  expiryDate.setDate(expiryDate.getDate() + 30);
+
+  subscription.expiryDate = expiryDate;
+  if (paymentMethod) {
+    subscription.paymentMethod = paymentMethod;
+  }
+
+  subscription.transactionHistory.push({
+    amount: 250,
+    date: new Date(),
+    status: 'successful',
+    description: 'Premium subscription renewal'
+  });
+};
+
+const handleDowngradeToFree = (subscription) => {
+  subscription.type = 'free';
+  subscription.autoRenew = false;
+
+  subscription.transactionHistory.push({
+    amount: 0,
+    date: new Date(),
+    status: 'successful',
+    description: 'Subscription cancelled'
+  });
+};
+
+// Refactored controller
 export const updateSubscription = async (req, res) => {
   try {
-    // Extract update parameters from request body
     const { type, autoRenew, paymentMethod } = req.body;
     const userId = req.user.id;
 
-    // Validate subscription type
-    if (type && !['free', 'premium'].includes(type)) {
-      return res.status(400).json({ message: 'Invalid subscription type' });
+    // Validate inputs
+    try {
+      validateSubscriptionInput(type, autoRenew, paymentMethod);
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
     }
 
-    // Validate autoRenew parameter
-    if (autoRenew !== undefined && typeof autoRenew !== 'boolean') {
-      return res.status(400).json({ message: 'autoRenew must be a boolean' });
-    }
-
-    // Validate payment method
-    if (paymentMethod) {
-      if (!paymentMethod.cardType || !paymentMethod.lastFourDigits) {
-        return res.status(400).json({ 
-          message: 'Payment method must include cardType and lastFourDigits' 
-        });
-      }
-      if (typeof paymentMethod.cardType !== 'string' || 
-          typeof paymentMethod.lastFourDigits !== 'string') {
-        return res.status(400).json({ 
-          message: 'cardType and lastFourDigits must be strings' 
-        });
-      }
-      // Validate lastFourDigits is exactly 4 digits
-      if (!/^\d{4}$/.test(paymentMethod.lastFourDigits)) {
-        return res.status(400).json({ 
-          message: 'lastFourDigits must be exactly 4 digits' 
-        });
-      }
-    }
-
+    // Get or create subscription
     let subscription = await Subscription.findOne({ userId });
     if (!subscription) {
       subscription = new Subscription({
@@ -85,60 +136,14 @@ export const updateSubscription = async (req, res) => {
       });
     }
 
-    // Handle premium subscription upgrade
+    // Handle subscription changes
     if (type === 'premium' && subscription.type === 'free') {
-      const startDate = new Date();
-      const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + 30);
-
-      subscription.type = 'premium';
-      subscription.startDate = startDate;
-      subscription.expiryDate = expiryDate;
-      subscription.autoRenew = autoRenew !== undefined ? autoRenew : true;
-
-      if (paymentMethod) {
-        subscription.paymentMethod = paymentMethod;
-      }
-
-      subscription.transactionHistory.push({
-        amount: 250,
-        date: new Date(),
-        status: 'successful',
-        description: 'Premium subscription purchase'
-      });
-    }
-    // Handle premium subscription renewal
-    else if (type === 'premium' && subscription.type === 'premium') {
-      const expiryDate = new Date(subscription.expiryDate || new Date());
-      expiryDate.setDate(expiryDate.getDate() + 30);
-
-      subscription.expiryDate = expiryDate;
-
-      if (paymentMethod) {
-        subscription.paymentMethod = paymentMethod;
-      }
-      
-      subscription.transactionHistory.push({
-        amount: 250,
-        date: new Date(),
-        status: 'successful',
-        description: 'Premium subscription renewal'
-      });
-    }
-    // Handle subscription downgrade to free
-    else if (type === 'free' && subscription.type === 'premium') {
-      subscription.type = 'free';
-      subscription.autoRenew = false;
-
-      subscription.transactionHistory.push({
-        amount: 0,
-        date: new Date(),
-        status: 'successful',
-        description: 'Subscription cancelled'
-      });
-    }
-    // Update autoRenew status
-    else if (autoRenew !== undefined) {
+      handlePremiumUpgrade(subscription, autoRenew, paymentMethod);
+    } else if (type === 'premium' && subscription.type === 'premium') {
+      handlePremiumRenewal(subscription, paymentMethod);
+    } else if (type === 'free' && subscription.type === 'premium') {
+      handleDowngradeToFree(subscription);
+    } else if (autoRenew !== undefined) {
       subscription.autoRenew = autoRenew;
     }
 
