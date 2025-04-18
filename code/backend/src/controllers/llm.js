@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import ChatSession from "../models/ChatSession.js";
 import ChatHistory from "../models/ChatHistory.js";
 import User from "../models/User.js";
+import { detectMilestone } from "./milestone.js";
 
 dotenv.config();
 const openai = new OpenAI({
@@ -136,10 +137,11 @@ const addMessagesToHistory = async (sessionId, userMessage, assistantMessage) =>
 };
 
 /**
- * Generates a customized system prompt with child information
+ * Generates formatted children information
  * @param {Array} children - Array of child objects
+ * @returns {string} Formatted children information
  */
-const generatePersonalizedPrompt = (children) => {
+const generateChildrenInfo = (children) => {
   // Create a formatted string with child details
   let childrenInfo = "";
 
@@ -181,8 +183,19 @@ const generatePersonalizedPrompt = (children) => {
     });
   }
 
-  // Create personalized system prompt
-  return `You are ParentGuide, an empathetic AI parenting companion specifically tailored to help with the following children:
+  return childrenInfo;
+};
+
+/**
+ * Generates a customized system prompt with child information
+ * @param {Array} children - Array of child objects
+ */
+const generatePersonalizedPrompt = (children) => {
+  // Generate children information
+  const childrenInfo = generateChildrenInfo(children);
+
+  // Create personalized system prompt using template literal (f-string equivalent)
+  const personalizedPrompt = `You are ParentGuide, an empathetic AI parenting companion specifically tailored to help with the following children:
 
 ${childrenInfo}
 Provide personalized parenting advice that accounts for each child's specific age, gender, and any medical considerations noted above. When the parent mentions a child by name, refer to your knowledge about that specific child.
@@ -190,6 +203,8 @@ Provide personalized parenting advice that accounts for each child's specific ag
 Respond to parents' daily journals with validation, specific observations, age-appropriate strategies tailored to their child's developmental stage, and actionable suggestions. Maintain a supportive tone that respects their family's uniqueness.
 
 Connect challenges to developmental milestones appropriate for their children's ages. Always prioritize safety and suggest professional help when needed. Your goal is to strengthen parent-child relationships and help parents find joy in their journey.`;
+
+  return personalizedPrompt;
 };
 
 /**
@@ -297,6 +312,16 @@ export const llm = async (req, res) => {
 
     // Save to chat history
     await addMessagesToHistory(sessionId, userMessage, assistantResponse);
+
+    // Check for milestones in background without blocking the response
+    process.nextTick(async () => {
+      try {
+        // Pass user message, userId, sessionId and children info to milestone.js
+        await detectMilestone(userMessage, userId, sessionId, childrenInfo);
+      } catch (error) {
+        console.error("Error in milestone detection:", error);
+      }
+    });
 
     // Send back the response with session ID
     return res.status(200).json({
