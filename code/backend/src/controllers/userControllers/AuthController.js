@@ -5,6 +5,7 @@ import Subscription from '../../models/Subscription.js';
 import { sendOtp } from '../../services/send_otp.js';
 import { sendResetOtp } from '../../services/send_reset_otp.js';
 import dotenv from "dotenv";
+import TokenBlacklist from '../../utils/tokenBlacklist.js';
 
 // Load environment variables
 dotenv.config();
@@ -201,4 +202,28 @@ export const resetPassword = async (req, res) => {
       error: error.message // Optionally include the error message for more context
     });
   }
+};
+
+export const logoutUser = async (req, res) => {
+    try {
+        const token = req.authToken;
+        
+        // Get token expiration from JWT payload
+        const decoded = jwt.decode(token);
+        const tokenExp = decoded.exp * 1000; // Convert to milliseconds
+        
+        // Add the token to blacklist
+        TokenBlacklist.addToken(token, tokenExp);
+
+        return res.status(200).json({
+            success: true,
+            message: "Successfully logged out"
+        });
+    } catch (error) {
+        console.error("Error during logout:", error);
+        return res.status(500).json({
+            message: "An error occurred during logout",
+            error: error.message
+        });
+    }
 };

@@ -2,6 +2,7 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import User from "../models/User.js";
+import TokenBlacklist from '../utils/tokenBlacklist.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -17,6 +18,11 @@ const authenticate_jwt = async (req, res, next) => {
         // Extract the token from the Authorization header
         const token = authHeader.split(" ")[1];
         
+        // Check if token is blacklisted
+        if (TokenBlacklist.isBlacklisted(token)) {
+            return res.status(401).json({ message: "Token has been invalidated" });
+        }
+
         // Ensure JWT_SECRET is configured in environment variables
         if (!process.env.JWT_SECRET) {
             console.error("JWT_SECRET is not defined in environment variables");

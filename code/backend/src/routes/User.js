@@ -1,6 +1,6 @@
 import express from 'express';
 import authenticate_jwt from '../middlewares/authenticate_jwt.js';
-import { registerUser, loginUser, verifyEmail, forgotPassword, resetPassword } from '../controllers/userControllers/AuthController.js';
+import { registerUser, loginUser, verifyEmail, forgotPassword, resetPassword, logoutUser } from '../controllers/userControllers/AuthController.js';
 import { getUserProfile, changeUserProfile, setNotificationSettings, getParentsForChat } from '../controllers/userControllers/ProfileController.js';
 import { addChild, getChildren, updateChild, removeChild } from '../controllers/userControllers/ChildController.js';
 import { getSubscription, updateSubscription } from '../controllers/userControllers/SubscriptionController.js';
@@ -19,6 +19,7 @@ router.post('/login', loginUser);
 router.post('/verify_email', verifyEmail);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.post('/logout', authenticate_jwt, logoutUser);
 
 // Profile Routes
 router.get('/profile', authenticate_jwt, getUserProfile);
