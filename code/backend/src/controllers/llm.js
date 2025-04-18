@@ -195,7 +195,7 @@ const generatePersonalizedPrompt = (children) => {
   const childrenInfo = generateChildrenInfo(children);
 
   // Create personalized system prompt using template literal (f-string equivalent)
-  const personalizedPrompt = `You are ParentGuide, an empathetic AI parenting companion specifically tailored to help with the following children:
+  const personalizedPrompt = `You are an empathetic AI parenting companion specifically tailored to help with the following children:
 
 ${childrenInfo}
 Provide personalized parenting advice that accounts for each child's specific age, gender, and any medical considerations noted above. When the parent mentions a child by name, refer to your knowledge about that specific child.
@@ -230,6 +230,19 @@ export const llm = async (req, res) => {
     // Get children information
     const children = user.children || [];
 
+    // Generate children information string for use in both prompt and milestone detection
+    const childrenInfo = generateChildrenInfo(children);
+
+    // Generate personalized system prompt using the children info
+    const personalizedPrompt = `You are an empathetic AI parenting companion specifically tailored to help with the following children:
+
+${childrenInfo}
+Provide personalized parenting advice that accounts for each child's specific age, gender, and any medical considerations noted above. When the parent mentions a child by name, refer to your knowledge about that specific child.
+
+Respond to parents' daily journals with validation, specific observations, age-appropriate strategies tailored to their child's developmental stage, and actionable suggestions. Maintain a supportive tone that respects their family's uniqueness.
+
+Connect challenges to developmental milestones appropriate for their children's ages. Always prioritize safety and suggest professional help when needed. Your goal is to strengthen parent-child relationships and help parents find joy in their journey.`;
+
     // Get session ID from header
     const requestSessionId = req.headers['session-id'];
     console.log(`Request session ID: ${requestSessionId}`);
@@ -243,7 +256,7 @@ export const llm = async (req, res) => {
     let userMessage = "";
 
     // Generate personalized system prompt
-    const personalizedPrompt = generatePersonalizedPrompt(children);
+    // const personalizedPrompt = generatePersonalizedPrompt(children);
 
     // Handle input formats
     if (req.body.message) {
