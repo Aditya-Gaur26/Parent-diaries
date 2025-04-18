@@ -575,12 +575,67 @@ paths:
       responses:
         '200':
           description: Subscription details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscription:
+                    type: object
+                    properties:
+                      userId:
+                        type: string
+                      type:
+                        type: string
+                        enum: ['free', 'premium']
+                      startDate:
+                        type: string
+                        format: date-time
+                      expiryDate:
+                        type: string
+                        format: date-time
+                      autoRenew:
+                        type: boolean
+                      paymentMethod:
+                        type: object
+                        properties:
+                          cardType:
+                            type: string
+                          lastFourDigits:
+                            type: string
+                      transactionHistory:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            amount:
+                              type: number
+                            date:
+                              type: string
+                              format: date-time
+                            status:
+                              type: string
+                              enum: ['successful', 'failed', 'refunded']
+                            description:
+                              type: string
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Error retrieving subscription information"
+                  error:
+                    type: string
 
   /api/users/update-subscription:
     post:
       tags:
         - Subscription
-      summary: Update subscription
+      summary: Update subscription status
       security:
         - BearerAuth: []
       requestBody:
@@ -590,11 +645,94 @@ paths:
             schema:
               type: object
               properties:
-                planId:
+                type:
                   type: string
+                  enum: ['free', 'premium']
+                  description: Subscription type to update to
+                autoRenew:
+                  type: boolean
+                  description: Whether to auto-renew the subscription
+                paymentMethod:
+                  type: object
+                  properties:
+                    cardType:
+                      type: string
+                      description: Type of payment card
+                    lastFourDigits:
+                      type: string
+                      pattern: '^[0-9]{4}$'
+                      description: Last 4 digits of the payment card
       responses:
         '200':
           description: Subscription updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Subscription updated successfully"
+                  subscription:
+                    type: object
+                    properties:
+                      userId:
+                        type: string
+                      type:
+                        type: string
+                        enum: ['free', 'premium']
+                      startDate:
+                        type: string
+                        format: date-time
+                      expiryDate:
+                        type: string
+                        format: date-time
+                      autoRenew:
+                        type: boolean
+                      paymentMethod:
+                        type: object
+                        properties:
+                          cardType:
+                            type: string
+                          lastFourDigits:
+                            type: string
+                      transactionHistory:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            amount:
+                              type: number
+                            date:
+                              type: string
+                              format: date-time
+                            status:
+                              type: string
+                              enum: ['successful', 'failed', 'refunded']
+                            description:
+                              type: string
+        '400':
+          description: Invalid input parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Invalid subscription type"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Error updating subscription"
+                  error:
+                    type: string
 
   /api/users/report-issue:
     post:

@@ -55,6 +55,27 @@ export const updateSubscription = async (req, res) => {
       return res.status(400).json({ message: 'autoRenew must be a boolean' });
     }
 
+    // Validate payment method
+    if (paymentMethod) {
+      if (!paymentMethod.cardType || !paymentMethod.lastFourDigits) {
+        return res.status(400).json({ 
+          message: 'Payment method must include cardType and lastFourDigits' 
+        });
+      }
+      if (typeof paymentMethod.cardType !== 'string' || 
+          typeof paymentMethod.lastFourDigits !== 'string') {
+        return res.status(400).json({ 
+          message: 'cardType and lastFourDigits must be strings' 
+        });
+      }
+      // Validate lastFourDigits is exactly 4 digits
+      if (!/^\d{4}$/.test(paymentMethod.lastFourDigits)) {
+        return res.status(400).json({ 
+          message: 'lastFourDigits must be exactly 4 digits' 
+        });
+      }
+    }
+
     let subscription = await Subscription.findOne({ userId });
     if (!subscription) {
       subscription = new Subscription({
@@ -93,6 +114,10 @@ export const updateSubscription = async (req, res) => {
 
       subscription.expiryDate = expiryDate;
 
+      if (paymentMethod) {
+        subscription.paymentMethod = paymentMethod;
+      }
+      
       subscription.transactionHistory.push({
         amount: 250,
         date: new Date(),
