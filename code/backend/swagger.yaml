@@ -214,6 +214,36 @@ paths:
       responses:
         '200':
           description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  email:
+                    type: string
+                  mobile_number:
+                    type: string
+                  dob:
+                    type: string
+                    format: date
+                  bio:
+                    type: string
+                  role:
+                    type: string
+                  specialization:
+                    type: string
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+    
     put:
       tags:
         - Profile
@@ -231,9 +261,11 @@ paths:
                   type: string
                 mobile_number:
                   type: string
-                  description: Must be a valid phone number with optional + prefix
+                  pattern: '^\+?[\d\s-]{10,}$'
+                  description: Must be at least 10 digits with optional + prefix
                 dob:
                   type: string
+                  pattern: '^(\d{2})/(\d{2})/(\d{4})$'
                   description: Date in DD/MM/YYYY format
                 bio:
                   type: string
@@ -250,10 +282,29 @@ paths:
                 properties:
                   message:
                     type: string
+                    example: "Profile updated successfully"
                   user:
                     type: object
+                    properties:
+                      name:
+                        type: string
+                      mobile_number:
+                        type: string
+                      dob:
+                        type: string
+                      bio:
+                        type: string
+                      specialization:
+                        type: string
         '400':
-          description: Invalid input data
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
         '404':
           description: User not found
         '500':
@@ -272,14 +323,73 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - pushEnabled
+                - emailEnabled
+                - notificationTypes
               properties:
-                emailNotifications:
+                pushEnabled:
                   type: boolean
-                pushNotifications:
+                  description: Enable/disable push notifications
+                emailEnabled:
                   type: boolean
+                  description: Enable/disable email notifications
+                notificationTypes:
+                  type: object
+                  properties:
+                    newMessages:
+                      type: boolean
+                      default: true
+                    reminders:
+                      type: boolean
+                      default: true
+                    updates:
+                      type: boolean
+                      default: true
+                    marketingEmails:
+                      type: boolean
+                      default: false
+                    activitySummary:
+                      type: boolean
+                      default: true
+                  description: Object containing notification type preferences
       responses:
         '200':
-          description: Notification settings updated
+          description: Notification settings updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Notification settings updated successfully"
+                  notificationSettings:
+                    type: object
+                    properties:
+                      pushEnabled:
+                        type: boolean
+                      emailEnabled:
+                        type: boolean
+                      notificationTypes:
+                        type: object
+                        properties:
+                          newMessages:
+                            type: boolean
+                          reminders:
+                            type: boolean
+                          updates:
+                            type: boolean
+                          marketingEmails:
+                            type: boolean
+                          activitySummary:
+                            type: boolean
+        '400':
+          description: Incomplete notification settings provided
+        '404':
+          description: User not found
+        '500':
+          description: Server error
 
   /api/users/children:
     post:
@@ -294,15 +404,62 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - name
+                - dateOfBirth
+                - gender
               properties:
                 name:
                   type: string
                 dateOfBirth:
                   type: string
                   format: date
+                gender:
+                  type: string
+                  enum: [Male, Female, Other]
+                bloodGroup:
+                  type: string
+                  enum: [A+, A-, B+, B-, AB+, AB-, O+, O-]
+                medicalConditions:
+                  type: array
+                  items:
+                    type: string
+                allergies:
+                  type: array
+                  items:
+                    type: string
       responses:
         '201':
           description: Child added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  child:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                      name:
+                        type: string
+                      dateOfBirth:
+                        type: string
+                        format: date
+                      gender:
+                        type: string
+                      bloodGroup:
+                        type: string
+                      medicalConditions:
+                        type: array
+                        items:
+                          type: string
+                      allergies:
+                        type: array
+                        items:
+                          type: string
     get:
       tags:
         - Children
@@ -326,6 +483,7 @@ paths:
           required: true
           schema:
             type: string
+          description: ID of the child to update
       requestBody:
         required: true
         content:
@@ -338,9 +496,59 @@ paths:
                 dateOfBirth:
                   type: string
                   format: date
+                gender:
+                  type: string
+                  enum: [Male, Female, Other]
+                bloodGroup:
+                  type: string
+                  enum: [A+, A-, B+, B-, AB+, AB-, O-, O+]
+                medicalConditions:
+                  type: array
+                  items:
+                    type: string
+                allergies:
+                  type: array
+                  items:
+                    type: string
       responses:
         '200':
           description: Child information updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Child updated successfully"
+                  child:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                      name:
+                        type: string
+                      dateOfBirth:
+                        type: string
+                        format: date
+                      gender:
+                        type: string
+                      bloodGroup:
+                        type: string
+                      medicalConditions:
+                        type: array
+                        items:
+                          type: string
+                      allergies:
+                        type: array
+                        items:
+                          type: string
+        '400':
+          description: Invalid input data
+        '404':
+          description: User or child not found
+        '500':
+          description: Server error
     delete:
       tags:
         - Children

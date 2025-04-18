@@ -93,7 +93,6 @@ export const setNotificationSettings = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-
     // Update notification settings
     user.notificationSettings = {
       pushEnabled,
@@ -101,6 +100,7 @@ export const setNotificationSettings = async (req, res) => {
       notificationTypes
     };
 
+    // Save the user with updated notification settings
     await user.save();
 
     return res.status(200).json({

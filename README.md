@@ -13,3 +13,10 @@ The problem that we are trying to solve is confusion, lack of clarity and of exp
 
 ## How to run :
 Read instructions in code/README.md
+
+
+## Tasks Left:
+- Integrate logout on backend with frontend
+- Implement OCR on vaccine charts
+- Find partially filled vaccine charts to test the OCR on.
+- Notification updating requires all to be provided: which shouldnt be the case i think(check frontend implementationw)
