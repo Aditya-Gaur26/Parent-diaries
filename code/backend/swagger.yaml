@@ -747,14 +747,79 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - category
+                - description
               properties:
-                title:
+                category:
                   type: string
+                  enum:
+                    - "App Performance Issues"
+                    - "Account Problems"
+                    - "Feature Request"
+                    - "Bug Report"
+                    - "Payment Issues"
+                    - "Other"
+                  description: Category of the reported issue
                 description:
                   type: string
+                  minLength: 10
+                  maxLength: 1000
+                  description: Detailed description of the issue (10-1000 characters)
       responses:
-        '200':
+        '201':
           description: Issue reported successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Issue reported successfully"
+                  reportId:
+                    type: string
+                    description: MongoDB document ID of the created report
+                  status:
+                    type: string
+                    description: Current status of the report
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                oneOf:
+                  - properties:
+                      message:
+                        type: string
+                        example: "Category and description are required"
+                  - properties:
+                      message:
+                        type: string
+                        example: "Invalid category"
+                      validCategories:
+                        type: array
+                        items:
+                          type: string
+                  - properties:
+                      message:
+                        type: string
+                        example: "Description must be at least 10 characters long"
+                  - properties:
+                      message:
+                        type: string
+                        example: "Description cannot exceed 1000 characters"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "An error occurred while reporting the issue"
 
   /api/users/parents-for-chat:
     get:
