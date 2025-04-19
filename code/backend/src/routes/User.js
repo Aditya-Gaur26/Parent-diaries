@@ -48,7 +48,7 @@ router.get('/milestones', authenticate_jwt, async (req, res) => {
   try {
     
     const milestones = await getUserMilestones(req.user._id);
-    console.log(milestones)
+    // console.log(milestones)
     res.status(200).json({ success: true, data: milestones });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

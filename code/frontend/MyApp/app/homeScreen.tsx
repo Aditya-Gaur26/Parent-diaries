@@ -53,11 +53,11 @@ export default function HomeScreen() {
         // If this is an admin or doctor who somehow got to the user home screen,
         // redirect them to their correct home screen
         if (role === 'admin') {
-          console.log('Admin detected on user screen, redirecting');
+          // console.log('Admin detected on user screen, redirecting');
           router.replace('/adminHomeScreen');
           return;
         } else if (role === 'doctor') {
-          console.log('Doctor detected on user screen, redirecting');
+          // console.log('Doctor detected on user screen, redirecting');
           router.replace('/doctorHomeScreen');
           return;
         }
@@ -76,7 +76,7 @@ export default function HomeScreen() {
   // Use useFocusEffect to refresh chat sessions whenever screen gains focus
   useFocusEffect(
     useCallback(() => {
-      console.log('HomeScreen focused, refreshing chat sessions...');
+      // console.log('HomeScreen focused, refreshing chat sessions...');
       fetchChatSessions();
       return () => {
         // Optional cleanup if needed
@@ -90,7 +90,7 @@ export default function HomeScreen() {
       const token = await AsyncStorage.getItem('authToken');
       
       if (!token) {
-        console.log('No auth token found, redirecting to login');
+        // console.log('No auth token found, redirecting to login');
         router.replace('/login');
         return;
       }
@@ -103,7 +103,7 @@ export default function HomeScreen() {
         }
       });
 
-      console.log('User profile fetched:', response.data);
+      // console.log('User profile fetched:', response.data);
       
       // Update state with user data
       setUser(response.data);
@@ -150,19 +150,19 @@ export default function HomeScreen() {
   const fetchChatSessions = async () => {
     try {
       setIsHistoryLoading(true);
-      console.log('Fetching chat sessions...');
+      // console.log('Fetching chat sessions...');
       const token = await AsyncStorage.getItem('authToken');
       if (!token) {
-        console.log('No auth token found');
+        // console.log('No auth token found');
         setIsHistoryLoading(false);
         return;
       }
 
       // Log token length to help with debugging (don't log the full token for security)
-      console.log(`Auth token is ${token.length} characters long`);
+      // console.log(`Auth token is ${token.length} characters long`);
       
       // Updated endpoint to use /llm/sessions directly instead of going through redirection
-      console.log(`Making request to: ${BACKEND_URL}/llm/sessions`);
+      // console.log(`Making request to: ${BACKEND_URL}/llm/sessions`);
       const response = await axios.get(`${BACKEND_URL}/llm/sessions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -170,12 +170,12 @@ export default function HomeScreen() {
         }
       });
 
-      console.log('Response received:', response.data);
+      // console.log('Response received:', response.data);
 
       if (response.data && Array.isArray(response.data)) {
         // Get the 4 most recent chat sessions
         const recentSessions = response.data.slice(0, 4);
-        console.log('Recent sessions:', recentSessions);
+        // console.log('Recent sessions:', recentSessions);
         
         if (recentSessions.length > 0) {
           // Process sessions directly without fetching individual histories
@@ -204,15 +204,15 @@ export default function HomeScreen() {
           
           // Sort by timestamp (newest first)
           processedSessions.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-          console.log('Processed sessions:', processedSessions);
+          // console.log('Processed sessions:', processedSessions);
           
           setChatHistory(processedSessions);
         } else {
-          console.log('No recent sessions found');
+          // console.log('No recent sessions found');
           setChatHistory([]);
         }
       } else {
-        console.log('Invalid response format:', response.data);
+        // console.log('Invalid response format:', response.data);
         setChatHistory([]);
       }
     } catch (error) {
