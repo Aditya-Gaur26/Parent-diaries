@@ -195,8 +195,8 @@ export default function MilestoneTracker() {
   };
 
   const getChildName = (milestone: Milestone): string => {
-    if (milestone.childId && milestone.childId.name) {
-      return milestone.childId.name;
+    if (milestone.childName) {
+      return milestone.childName;
     }
     return 'Unknown Child';
   };
@@ -320,7 +320,7 @@ export default function MilestoneTracker() {
           </Text>
           <TouchableOpacity 
             style={styles.journalButton}
-            onPress={() => router.push('/chat')}
+            onPress={() => router.push('/chat2')}
           >
             <Text style={styles.journalButtonText}>Go to Journal</Text>
           </TouchableOpacity>

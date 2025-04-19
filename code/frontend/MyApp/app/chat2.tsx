@@ -13,6 +13,7 @@ import {
   Animated,
   ActivityIndicator,
   LogBox,
+  AppState,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -157,7 +158,7 @@ const Chat2Screen = () => {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: forRecording, // Critical for iOS recording
         playsInSilentModeIOS: true,
-        // staysActiveInBackground: true,
+        // staysActiveInBackground: false,
         // interruptionModeIOS: Audio.InterruptionModeIOS.DuckOthers,
         shouldDuckAndroid: true,
         // interruptionModeAndroid: Audio.InterruptionModeAndroid.DuckOthers,
@@ -190,8 +191,19 @@ const Chat2Screen = () => {
     };
 
     setup();
-
+    
+    // Add cleanup to stop audio when component unmounts
     return () => {
+      // Stop and unload any audio playing
+      if (sound.current) {
+        sound.current.stopAsync().catch(() => {});
+        sound.current.unloadAsync().catch(() => {});
+        sound.current = null;
+      }
+      
+      // Stop any ongoing speech
+      Speech.stop().catch(() => {});
+      
       if (recordingObject) {
         try {
           recordingObject.stopAndUnloadAsync();
@@ -201,6 +213,27 @@ const Chat2Screen = () => {
       }
 
       clearAnimationInterval();
+    };
+  }, []);
+
+  // Add an effect for AppState changes to handle app going to background
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        // Stop audio when app goes to background or becomes inactive
+        if (sound.current) {
+          sound.current.stopAsync().catch(() => {});
+          sound.current.unloadAsync().catch(() => {});
+          sound.current = null;
+        }
+        
+        // Stop any ongoing speech
+        Speech.stop().catch(() => {});
+      }
+    });
+
+    return () => {
+      subscription.remove();
     };
   }, []);
 
@@ -268,7 +301,32 @@ const Chat2Screen = () => {
     }
   };
 
-  const toggleSpeechMute = () => {
+  const toggleSpeechMute = async () => {
+    // If we're turning mute on (from unmuted to muted), stop any playing audio
+    if (!isSpeechMuted) {
+      // Stop any currently playing audio
+      if (sound.current) {
+        try {
+          const status = await sound.current.getStatusAsync();
+          if (status.isLoaded && status.isPlaying) {
+            await sound.current.stopAsync();
+            await sound.current.unloadAsync();
+          }
+          sound.current = null;
+        } catch (error) {
+          console.warn('Error stopping audio:', error);
+        }
+      }
+      
+      // Also stop any ongoing speech
+      try {
+        Speech.stop();
+      } catch (error) {
+        console.warn('Error stopping speech:', error);
+      }
+    }
+    
+    // Toggle the mute state
     setIsSpeechMuted(!isSpeechMuted);
   };
 
