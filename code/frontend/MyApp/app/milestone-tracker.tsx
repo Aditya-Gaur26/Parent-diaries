@@ -9,7 +9,8 @@ import {
   ActivityIndicator,
   Image,
   Dimensions,
-  FlatList
+  FlatList,
+  Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -26,10 +27,19 @@ type Milestone = {
     age: number;
     gender: string;
   };
-  childName?: string;
   milestone: string;
   date: string;
   originalEntry: string;
+};
+
+type Child = {
+  _id: string;
+  name: string;
+  dateOfBirth?: string;
+  gender?: string;
+  bloodGroup?: string | null;
+  medicalConditions?: string[];
+  allergies?: string[];
 };
 
 export default function MilestoneTracker() {
@@ -37,51 +47,96 @@ export default function MilestoneTracker() {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [children, setChildren] = useState<Child[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string>('');
 
   useEffect(() => {
-    fetchMilestones();
+    fetchData();
   }, []);
 
-  const fetchMilestones = async () => {
+  const fetchData = async () => {
+    setLoading(true);
+    await fetchChildren();
+    setLoading(false);
+  };
+
+  const fetchChildren = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      
+      if (!token) {
+        console.log('No auth token found');
+        return;
+      }
+
+      const response = await axios.get(`${BACKEND_URL}/api/users/children`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      console.log("Children API response:", response.data);
+
+      if (response.data.children && response.data.children.length > 0) {
+        setChildren(response.data.children);
+        const firstChildId = response.data.children[0]._id;
+        setSelectedChildId(firstChildId);
+        console.log("Selected first child:", response.data.children[0].name, firstChildId);
+        fetchMilestonesForChild(firstChildId);
+      } else {
+        console.warn('Failed to load children data');
+        const demoChildren = [
+          { _id: '101', name: 'Emma' },
+          { _id: '102', name: 'Noah' }
+        ];
+        setChildren(demoChildren);
+        setSelectedChildId('101');
+        useDemoData('101');
+      }
+    } catch (err) {
+      console.error('Error fetching children:', err);
+      const demoChildren = [
+        { _id: '101', name: 'Emma' },
+        { _id: '102', name: 'Noah' }
+      ];
+      setChildren(demoChildren);
+      setSelectedChildId('101');
+      useDemoData('101');
+    }
+  };
+
+  const fetchMilestonesForChild = async (childId: string) => {
+    if (!childId) return;
+    
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
       
       if (!token) {
-        console.log('No auth token found, redirecting to login');
-        router.replace('/login');
+        console.log('No auth token found');
         return;
       }
 
-      try {
-        const response = await axios.get(`${BACKEND_URL}/api/users/milestones`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        // console.log(response.dat)
+      const response = await axios.get(`${BACKEND_URL}/api/users/children/${childId}/milestones`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      console.log(`Milestones for child ${childId}:`, response.data);
 
-        if (response.data.success && response.data.data.length > 0) {
-
-          setMilestones(response.data.data);
-        } else {
-            console.log("using demo data")
-        //   setError('Failed to load milestones');
-          // Fallback to demo data
-          useDemoData();
-        }
-      } catch (err) {
-        console.error('Error fetching milestones:', err);
-        setError('An error occurred while fetching milestones');
-        // Fallback to demo data
-        useDemoData();
+      if (response.data.success && response.data.data) {
+        setMilestones(response.data.data);
+        setError(null);
+      } else {
+        console.warn('No milestones found for this child', response.data);
+        useDemoData(childId);
       }
+    } catch (err) {
+      console.error(`Error fetching milestones for child ${childId}:`, err);
+      setError(`Could not load milestones for this child`);
+      useDemoData(childId);
     } finally {
       setLoading(false);
     }
   };
 
-  const useDemoData = () => {
-    // Demo data for development purposes
-    setMilestones([
+  const useDemoData = (childId: string) => {
+    const demoData = [
       {
         _id: '1',
         childId: {
@@ -120,20 +175,28 @@ export default function MilestoneTracker() {
       },
       {
         _id: '4',
-        childName: 'Unknown',
+        childId: {
+          _id: '102',
+          name: 'Noah',
+          age: 3,
+          gender: 'male'
+        },
         milestone: 'Started eating solid foods',
         date: new Date(2023, 9, 10).toISOString(),
         originalEntry: 'We started solid foods today. The reaction was priceless!'
       }
-    ]);
+    ];
+    
+    const filteredData = demoData.filter(
+      item => item.childId && item.childId._id === childId
+    );
+    
+    setMilestones(filteredData.length > 0 ? filteredData : []);
   };
 
   const getChildName = (milestone: Milestone): string => {
     if (milestone.childId && milestone.childId.name) {
       return milestone.childId.name;
-    }
-    if (milestone.childName) {
-      return milestone.childName;
     }
     return 'Unknown Child';
   };
@@ -144,6 +207,12 @@ export default function MilestoneTracker() {
     } catch (error) {
       return 'Unknown date';
     }
+  };
+
+  const handleChildChange = (itemValue: string) => {
+    console.log("Selected child ID:", itemValue);
+    setSelectedChildId(itemValue);
+    fetchMilestonesForChild(itemValue);
   };
 
   const renderMilestoneItem = ({ item }: { item: Milestone }) => (
@@ -172,6 +241,40 @@ export default function MilestoneTracker() {
     </View>
   );
 
+  const renderChildSelector = () => {
+    return (
+      <View style={styles.childSelectorContainer}>
+        <Text style={styles.selectorLabel}>Select Child:</Text>
+        
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.childButtonsContainer}
+        >
+          {children.map((child) => (
+            <TouchableOpacity
+              key={child._id}
+              style={[
+                styles.childButton,
+                selectedChildId === child._id && styles.selectedChildButton
+              ]}
+              onPress={() => handleChildChange(child._id)}
+            >
+              <Text 
+                style={[
+                  styles.childButtonText,
+                  selectedChildId === child._id && styles.selectedChildButtonText
+                ]}
+              >
+                {child.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
@@ -198,6 +301,8 @@ export default function MilestoneTracker() {
         </Text>
       </View>
 
+      {renderChildSelector()}
+
       {error && (
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={24} color="#E53935" />
@@ -208,13 +313,14 @@ export default function MilestoneTracker() {
       {milestones.length === 0 && !loading && !error ? (
         <View style={styles.emptyContainer}>
           <MaterialCommunityIcons name="book-open-variant" size={80} color="#DDD" />
-          <Text style={styles.emptyTitle}>No Milestones Yet</Text>
+          <Text style={styles.emptyTitle}>No Milestones Found</Text>
           <Text style={styles.emptyText}>
-            Write about your child's special moments in the journal, and we'll automatically capture milestones.
+            No milestones recorded for {children.find(c => c._id === selectedChildId)?.name || 'this child'} yet.
+            Write about your child's special moments in the journal.
           </Text>
           <TouchableOpacity 
             style={styles.journalButton}
-            onPress={() => router.push('/journal')}
+            onPress={() => router.push('/chat')}
           >
             <Text style={styles.journalButtonText}>Go to Journal</Text>
           </TouchableOpacity>
@@ -380,5 +486,43 @@ const styles = StyleSheet.create({
     color: '#555',
     lineHeight: 20,
     fontStyle: 'italic',
+  },
+  childSelectorContainer: {
+    backgroundColor: '#fff',
+    padding: 12,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  selectorLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 10,
+  },
+  childButtonsContainer: {
+    flexDirection: 'row',
+    paddingVertical: 5,
+  },
+  childButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginRight: 10,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  selectedChildButton: {
+    backgroundColor: '#4A90E2',
+    borderColor: '#4A90E2',
+  },
+  childButtonText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  selectedChildButtonText: {
+    color: 'white',
   },
 });

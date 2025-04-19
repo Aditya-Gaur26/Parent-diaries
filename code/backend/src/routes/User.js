@@ -57,6 +57,7 @@ router.get('/milestones', authenticate_jwt, async (req, res) => {
 
 router.get('/children/:childId/milestones', authenticate_jwt, async (req, res) => {
   try {
+    // console.log(req.user._id, req.params.childId);
     const milestones = await getChildMilestones(req.user._id, req.params.childId);
     res.status(200).json({ success: true, data: milestones });
   } catch (error) {

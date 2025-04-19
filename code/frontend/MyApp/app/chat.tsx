@@ -156,6 +156,7 @@ const ChatScreen = () => {
           <TextInput
             style={styles.input}
             placeholder="Ask me anything..."
+            placeholderTextColor="#888"
             value={inputText}
             onChangeText={setInputText}
             onSubmitEditing={handleSend}
