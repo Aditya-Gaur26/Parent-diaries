@@ -152,6 +152,7 @@ const LoginScreen = () => {
       //   return;
       // }
       // console.log("login started")
+      console.log(`${BACKEND_URL}/api/users/login`)
 
       const response = await axios.post(`${BACKEND_URL}/api/users/login`, { email, password });
       const { token, role } = response.data;

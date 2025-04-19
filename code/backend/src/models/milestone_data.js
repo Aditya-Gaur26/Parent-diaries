@@ -6,6 +6,11 @@ const milestoneSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
+  childId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Child",
+    required: false,
+  },
   childName: {
     type: String,
     required: false,

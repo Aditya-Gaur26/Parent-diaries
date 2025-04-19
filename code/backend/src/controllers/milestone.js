@@ -1,11 +1,16 @@
 import OpenAI from "openai";
 import Milestone from "../models/milestone_data.js";
+import mongoose from "mongoose";
+import User from "../models/User.js"; // Import User model instead
 import dotenv from "dotenv";
 
 dotenv.config();
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Access Child model correctly from mongoose
+const Child = mongoose.model("User").schema.path('children').schema;
 
 /**
  * Analyzes journal entry to detect milestones using few-shot prompting
@@ -89,10 +94,27 @@ Only identify a child if you're confident which child the milestone refers to ba
         const childName = match[1] === "UNKNOWN" ? null : match[1];
         const milestoneText = match[2];
 
-        // Save milestone to database
+        // Find child by name if available
+        let childId = null;
+        if (childName) {
+          // Look up the child in the user's children array
+          const user = await User.findById(userId);
+          if (user && user.children) {
+            const child = user.children.find(
+              child => child.name.toLowerCase() === childName.toLowerCase()
+            );
+            
+            if (child) {
+              childId = child._id;
+            }
+          }
+        }
+
+        // Save milestone to database with child ID if found
         const milestone = new Milestone({
           userId,
-          childName,
+          childId,
+          childName, // Keep for backward compatibility
           milestone: milestoneText,
           originalEntry: journalText,
           date: new Date(),
@@ -119,11 +141,29 @@ Only identify a child if you're confident which child the milestone refers to ba
  */
 export const getUserMilestones = async (userId) => {
   try {
+    // Populate the child reference to get child details
     return await Milestone.find({ userId })
+      .populate('childId', 'name age gender') // Populate child details
       .sort({ date: -1 })
-      .select('childName milestone date originalEntry');
+      .lean(); // Convert to plain JS object
   } catch (error) {
     console.error("Error fetching milestones:", error);
+    throw error;
+  }
+};
+
+/**
+ * Gets milestones for a specific child
+ * @param {string} userId - User ID
+ * @param {string} childId - Child ID
+ */
+export const getChildMilestones = async (userId, childId) => {
+  try {
+    return await Milestone.find({ userId, childId })
+      .sort({ date: -1 })
+      .lean();
+  } catch (error) {
+    console.error(`Error fetching milestones for child ${childId}:`, error);
     throw error;
   }
 };

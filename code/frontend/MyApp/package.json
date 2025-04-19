@@ -25,6 +25,7 @@
     "@react-navigation/native": "^7.0.15",
     "@react-navigation/stack": "^7.1.2",
     "axios": "^1.8.2",
+    "date-fns": "^4.1.0",
     "expo": "~52.0.37",
     "expo-audio": "^0.3.5",
     "expo-av": "~15.0.2",

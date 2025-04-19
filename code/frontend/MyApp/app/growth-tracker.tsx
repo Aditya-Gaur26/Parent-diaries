@@ -361,6 +361,17 @@ export default function GrowthTracker() {
           </View>
         </TouchableOpacity>
 
+        <TouchableOpacity 
+          style={styles.vaccinationButton}
+          onPress={() => router.push('/milestone-tracker')}
+        >
+          <View style={styles.vaccinationContent}>
+            <MaterialCommunityIcons name="star-circle-outline" size={24} color="#FF9500" />
+            <Text style={styles.vaccinationText}>Captured Milestones</Text>
+            <Ionicons name="chevron-forward" size={24} color="#666" />
+          </View>
+        </TouchableOpacity>
+
         {Object.keys(milestoneData[activeAgeGroup]).map(category => (
           <View key={category} style={styles.categoryContainer}>
             <View style={styles.categoryHeader}>

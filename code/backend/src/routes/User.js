@@ -5,6 +5,7 @@ import { getUserProfile, changeUserProfile, setNotificationSettings, getParentsF
 import { addChild, getChildren, updateChild, removeChild } from '../controllers/userControllers/ChildController.js';
 import { getSubscription, updateSubscription } from '../controllers/userControllers/SubscriptionController.js';
 import { reportIssue } from '../controllers/userControllers/ReportController.js';
+import { getUserMilestones, getChildMilestones } from '../controllers/milestone.js';
 
 const router = express.Router();
 
@@ -41,5 +42,26 @@ router.post('/report-issue', authenticate_jwt, reportIssue);
 
 // Social Features Routes
 router.get('/parents-for-chat', authenticate_jwt, getParentsForChat);
+
+// Milestone Routes
+router.get('/milestones', authenticate_jwt, async (req, res) => {
+  try {
+    
+    const milestones = await getUserMilestones(req.user._id);
+    console.log(milestones)
+    res.status(200).json({ success: true, data: milestones });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/children/:childId/milestones', authenticate_jwt, async (req, res) => {
+  try {
+    const milestones = await getChildMilestones(req.user._id, req.params.childId);
+    res.status(200).json({ success: true, data: milestones });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 export default router;
