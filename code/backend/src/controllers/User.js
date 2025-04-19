@@ -107,6 +107,13 @@ export const loginUser = async (req, res) => {
         const user = await User.findOne({ email, isVerified: true });
         if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
+        // Check if user has password set
+        if (!user.password) {
+            return res.status(400).json({ 
+                message: 'Account exists but no password is set. Please use forgot password or Try Google Login.' 
+            });
+        }
+
         // Verify password
         const isMatch = await user.matchPassword(password);
         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
@@ -142,7 +149,7 @@ export const loginUser = async (req, res) => {
         });
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Login failed. Please try again.' });
     }
 };
 

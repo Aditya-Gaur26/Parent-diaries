@@ -25,8 +25,19 @@ export const getPosts = async (req, res) => {
     if (tag) query.tags = tag;
     if (solved !== undefined) query.isSolved = solved === 'true';
 
+    // Handle different sort options
+    let sortOption = {};
+    switch (sort) {
+      case '-upvotes':
+        sortOption = { 'upvotes.length': -1 };
+        break;
+      case '-createdAt':
+      default:
+        sortOption = { createdAt: -1 };
+    }
+
     const posts = await ForumPost.find(query)
-      .sort(sort)
+      .sort(sortOption)
       .populate('author', 'name')
       .select('-downvotes -upvotes');
     

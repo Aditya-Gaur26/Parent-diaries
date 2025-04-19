@@ -39,8 +39,13 @@ const PostDetailScreen = () => {
     getUserId();
   }, []);
 
+  useEffect(() => {
+    fetchPost();
+  }, [id]);
+
   const fetchPost = async () => {
     try {
+      setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
       if (!token) {
         Alert.alert('Error', 'Authentication required');
@@ -77,9 +82,101 @@ const PostDetailScreen = () => {
     }
   };
 
-  useEffect(() => {
-    fetchPost();
-  }, []);
+  const isUpvoted = (votes = []) => {
+    return Array.isArray(votes) && votes.includes(userId);
+  };
+
+  const isDownvoted = (votes = []) => {
+    return Array.isArray(votes) && votes.includes(userId);
+  };
+
+  const handleVotePost = async (type: 'up' | 'down') => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const currentVoteStatus = type === 'up' ? isUpvoted(post.upvotes) : isDownvoted(post.downvotes);
+
+      // Optimistic update for post votes
+      const updatedPost = { ...post };
+      if (currentVoteStatus) {
+        if (type === 'up') {
+          updatedPost.upvotes = updatedPost.upvotes.filter(id => id !== userId);
+        } else {
+          updatedPost.downvotes = updatedPost.downvotes.filter(id => id !== userId);
+        }
+      } else {
+        if (type === 'up') {
+          updatedPost.upvotes = [...updatedPost.upvotes, userId];
+          updatedPost.downvotes = updatedPost.downvotes.filter(id => id !== userId);
+        } else {
+          updatedPost.downvotes = [...updatedPost.downvotes, userId];
+          updatedPost.upvotes = updatedPost.upvotes.filter(id => id !== userId);
+        }
+      }
+      setPost(updatedPost);
+
+      await axios.post(
+        `${BACKEND_URL}/api/forum/posts/${id}/vote`,
+        { 
+          type: currentVoteStatus ? 'remove' : type,
+          voteType: type
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (error) {
+      console.error('Error voting:', error);
+      Alert.alert('Error', 'Failed to vote');
+      fetchPost(); // Only fetch on error to revert optimistic update
+    }
+  };
+
+  const handleVoteComment = async (commentId: string, type: 'up' | 'down') => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const commentIndex = post.comments.findIndex(c => c._id === commentId);
+      const comment = post.comments[commentIndex];
+      const currentVoteStatus = type === 'up' ? isUpvoted(comment?.upvotes) : isDownvoted(comment?.downvotes);
+
+      // Optimistic update for comment votes
+      const updatedPost = { ...post };
+      const updatedComment = { ...comment };
+
+      if (currentVoteStatus) {
+        if (type === 'up') {
+          updatedComment.upvotes = updatedComment.upvotes.filter(id => id !== userId);
+        } else {
+          updatedComment.downvotes = updatedComment.downvotes.filter(id => id !== userId);
+        }
+      } else {
+        if (type === 'up') {
+          updatedComment.upvotes = [...updatedComment.upvotes, userId];
+          updatedComment.downvotes = updatedComment.downvotes.filter(id => id !== userId);
+        } else {
+          updatedComment.downvotes = [...updatedComment.downvotes, userId];
+          updatedComment.upvotes = updatedComment.upvotes.filter(id => id !== userId);
+        }
+      }
+
+      updatedPost.comments[commentIndex] = updatedComment;
+      setPost(updatedPost);
+
+      await axios.post(
+        `${BACKEND_URL}/api/forum/comments/${commentId}/vote`,
+        { 
+          type: currentVoteStatus ? 'remove' : type,
+          voteType: type
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (error) {
+      console.error('Error voting comment:', error);
+      Alert.alert('Error', 'Failed to vote on comment');
+      fetchPost(); // Only fetch on error to revert optimistic update
+    }
+  };
+
+  const getVoteCount = (upvotes = [], downvotes = []) => {
+    return (upvotes?.length || 0) - (downvotes?.length || 0);
+  };
 
   const handleAddComment = async () => {
     if (!comment.trim()) return;
@@ -98,71 +195,14 @@ const PostDetailScreen = () => {
         { content: comment.trim() },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
       setComment('');
       fetchPost();
     } catch (error) {
       console.error('Error adding comment:', error);
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401) {
-          Alert.alert('Error', 'Please login again');
-          router.replace('/login');
-        } else {
-          Alert.alert('Error', 'Failed to add comment. Please try again.');
-        }
-      } else {
-        Alert.alert('Error', 'An unexpected error occurred');
-      }
+      Alert.alert('Error', 'Failed to add comment');
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const isUpvoted = (votes = []) => {
-    return Array.isArray(votes) && votes.includes(userId);
-  };
-
-  const isDownvoted = (votes = []) => {
-    return Array.isArray(votes) && votes.includes(userId);
-  };
-
-  const handleVotePost = async (type: 'up' | 'down') => {
-    try {
-      const token = await AsyncStorage.getItem('authToken');
-      const currentVoteStatus = type === 'up' ? isUpvoted(post.upvotes) : isDownvoted(post.downvotes);
-
-      await axios.post(
-        `${BACKEND_URL}/api/forum/posts/${id}/vote`,
-        { 
-          type: currentVoteStatus ? 'remove' : type,
-          voteType: type
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fetchPost();
-    } catch (error) {
-      console.error('Error voting:', error);
-      Alert.alert('Error', 'Failed to vote');
-    }
-  };
-
-  const handleVoteComment = async (commentId: string, type: 'up' | 'down') => {
-    try {
-      const token = await AsyncStorage.getItem('authToken');
-      const comment = post.comments.find(c => c._id === commentId);
-      const currentVoteStatus = type === 'up' ? isUpvoted(comment?.upvotes) : isDownvoted(comment?.downvotes);
-
-      await axios.post(
-        `${BACKEND_URL}/api/forum/comments/${commentId}/vote`,
-        { 
-          type: currentVoteStatus ? 'remove' : type,
-          voteType: type
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fetchPost();
-    } catch (error) {
-      console.error('Error voting comment:', error);
-      Alert.alert('Error', 'Failed to vote on comment');
     }
   };
 
@@ -197,7 +237,7 @@ const PostDetailScreen = () => {
         />
       </TouchableOpacity>
       <Text style={styles.voteCount}>
-        {(item.upvotes?.length || 0) - (item.downvotes?.length || 0)}
+        {getVoteCount(item.upvotes, item.downvotes)}
       </Text>
       <TouchableOpacity 
         style={[

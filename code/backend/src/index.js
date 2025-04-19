@@ -41,6 +41,7 @@ import adminRoutes from "./routes/Admin.js";        // Admin routes
 import chatRoutes from './routes/chat.js';          // Chat functionality routes
 import { Chat } from "openai/resources/index.mjs";
 import forumRoutes from './routes/forum.js';          // Forum routes
+import { startSchedulers } from "./services/scheduler.js";
 
 /**
  * @type {Object}
@@ -168,6 +169,7 @@ app.get("/", async (req, res) => {
  */
 try {
     connectDB().then(() => {
+        startSchedulers();
         /** @type {number} */
         const PORT = process.env.PORT || 5000;
         

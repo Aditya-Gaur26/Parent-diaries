@@ -30,63 +30,55 @@ const sendTextEmail = async (email, subject, text, html) => {
 };
 
 // Vaccination Reminder Template
-export const sendVaccinationReminder = async (
-  userEmail,
-  { childName, disease, doseType, expectedDate }
-) => {
-  const subject = `⏰ Upcoming Vaccination: ${childName}'s ${disease} ${doseType}`;
-  const text = `Reminder for ${childName}'s ${disease} ${doseType} vaccine on ${expectedDate}`;
+export const sendVaccinationReminder = async (userEmail, { childName, disease, doseType, expectedDate }) => {
+  try {
+    if (!userEmail || !childName || !disease || !doseType || !expectedDate) {
+      console.error('Missing required fields for vaccination reminder:', { userEmail, childName, disease, doseType, expectedDate });
+      return false;
+    }
 
-  const html = `
-    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-      <div style="text-align: center; margin-bottom: 30px;">
-        <h2 style="color: #1a365d; font-size: 28px; margin: 0;">Vaccination Reminder</h2>
-        <div style="width: 50px; height: 4px; background: #4299e1; margin: 15px auto;"></div>
-      </div>
-      
-      <div style="background: #f0f9ff; padding: 25px; border-radius: 10px; border-left: 5px solid #3b82f6;">
-        <h3 style="color: #1e40af; margin-top: 0; font-size: 22px;">
-          ${childName}'s Upcoming Vaccination
-        </h3>
-        
-        <div style="margin: 20px 0; background: white; padding: 20px; border-radius: 8px;">
-          <p style="margin: 12px 0; font-size: 16px; color: #1e293b;">
-            <span style="display: inline-block; width: 24px;">💉</span>
-            <strong>Vaccine:</strong> ${disease}
+    const subject = `⏰ Upcoming Vaccination Reminder: ${childName}'s ${disease} ${doseType}`;
+    const text = `Important reminder for ${childName}'s ${disease} ${doseType} vaccination scheduled for ${expectedDate}`;
+    
+    const html = `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #f0f9ff; padding: 20px; border-radius: 10px;">
+          <h2 style="color: #1e40af;">Vaccination Reminder</h2>
+          <p style="font-size: 16px; color: #333;">
+            This is a reminder for ${childName}'s upcoming vaccination:
           </p>
-          <p style="margin: 12px 0; font-size: 16px; color: #1e293b;">
-            <span style="display: inline-block; width: 24px;">🔄</span>
-            <strong>Dose:</strong> ${doseType}
-          </p>
-          <p style="margin: 12px 0; font-size: 16px; color: #1e293b;">
-            <span style="display: inline-block; width: 24px;">📅</span>
-            <strong>Date:</strong> ${expectedDate}
+          <ul style="list-style: none; padding: 0;">
+            <li style="margin: 10px 0;">
+              <strong>Vaccine:</strong> ${disease}
+            </li>
+            <li style="margin: 10px 0;">
+              <strong>Dose:</strong> ${doseType}
+            </li>
+            <li style="margin: 10px 0;">
+              <strong>Scheduled Date:</strong> ${expectedDate}
+            </li>
+          </ul>
+          <p style="color: #666; font-size: 14px; margin-top: 20px;">
+            Please ensure you don't miss this important vaccination.
           </p>
         </div>
       </div>
+    `;
 
-      <div style="margin-top: 30px; padding: 20px; background: #f8fafc; border-radius: 8px;">
-        <p style="color: #64748b; margin: 0; font-size: 14px; line-height: 1.6;">
-          You're receiving this email because you enabled reminder notifications.
-          <br>
-          <a href="${process.env.CLIENT_URL}/notification-settings" 
-             style="color: #3b82f6; text-decoration: none; font-weight: 500; display: inline-block; margin-top: 10px;">
-            Update notification preferences →
-          </a>
-        </p>
-      </div>
-      
-      <div style="margin-top: 30px; text-align: center; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-        <img src="${process.env.CLIENT_URL}/logo.png" alt="Parent Diaries Logo" style="height: 40px; margin-bottom: 15px;">
-        <p style="color: #64748b; font-size: 14px; margin: 0;">
-          Best regards,<br>
-          <strong style="color: #1e293b;">Parent Diaries Team</strong>
-        </p>
-      </div>
-    </div>
-  `;
+    const info = await transporter.sendMail({
+      from: `"Parent Diaries" <${process.env.SMTP_MAIL}>`,
+      to: userEmail,
+      subject,
+      text,
+      html
+    });
 
-  return sendTextEmail(userEmail, subject, text, html);
+    console.log('Vaccination reminder sent:', info.messageId);
+    return true;
+  } catch (error) {
+    console.error('Error sending vaccination reminder:', error);
+    return false;
+  }
 };
 
 // Export generic email sender for other use cases

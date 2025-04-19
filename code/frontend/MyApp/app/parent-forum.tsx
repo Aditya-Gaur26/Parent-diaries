@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, Alert, TextInput, RefreshControl
+  ActivityIndicator, Alert, RefreshControl, TextInput
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,16 +15,39 @@ const ForumScreen = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
+  const [activeTab, setActiveTab] = useState('newest');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+
+  useEffect(() => {
+    fetchPosts(selectedTag);
+  }, [selectedTag, activeTab]);
 
   const fetchPosts = async (tag = '') => {
     try {
+      setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
+      let queryParams = new URLSearchParams();
+      
+      if (tag) queryParams.append('tag', tag);
+      
+      switch (activeTab) {
+        case 'popular':
+          queryParams.append('sort', '-upvotes');
+          break;
+        case 'solved':
+          queryParams.append('solved', 'true');
+          break;
+        default:
+          queryParams.append('sort', '-createdAt');
+      }
+
       const response = await axios.get(
-        `${BACKEND_URL}/api/forum/posts${tag ? `?tag=${tag}` : ''}`,
+        `${BACKEND_URL}/api/forum/posts?${queryParams.toString()}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
       setPosts(response.data);
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -35,9 +58,21 @@ const ForumScreen = () => {
     }
   };
 
-  useEffect(() => {
-    fetchPosts(selectedTag);
-  }, [selectedTag]);
+  const filterPosts = (posts) => {
+    if (!searchQuery.trim()) return posts;
+
+    const query = searchQuery.toLowerCase();
+    return posts.filter(post => 
+      post.title.toLowerCase().includes(query) ||
+      post.content.toLowerCase().includes(query) ||
+      post.author.name.toLowerCase().includes(query) ||
+      post.tags.some(tag => tag.toLowerCase().includes(query))
+    );
+  };
+
+  const getVoteCount = (upvotes = [], downvotes = []) => {
+    return (upvotes?.length || 0) - (downvotes?.length || 0);
+  };
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -58,89 +93,127 @@ const ForumScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#000" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Parent Forum</Text>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#000" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Parent Forum</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={() => setShowSearch(!showSearch)}
+            >
+              <Ionicons name={showSearch ? "close" : "search"} size={22} color="#555" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {showSearch && (
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color="#777" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search posts, tags, or authors..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity 
+                style={styles.clearButton}
+                onPress={() => setSearchQuery('')}
+              >
+                <Ionicons name="close-circle" size={20} color="#777" />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        <View style={styles.tabsContainer}>
           <TouchableOpacity 
-            onPress={() => router.push('/new-post')}
-            style={styles.createButton}
+            style={[styles.tab, activeTab === 'newest' && styles.activeTab]}
+            onPress={() => setActiveTab('newest')}
           >
-            <Ionicons name="add-circle" size={24} color="#0066cc" />
+            <Ionicons name="time" size={18} color={activeTab === 'newest' ? "#1E88E5" : "#777"} />
+            <Text style={[styles.tabText, activeTab === 'newest' && styles.activeTabText]}>Newest</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'popular' && styles.activeTab]}
+            onPress={() => setActiveTab('popular')}
+          >
+            <Ionicons name="trending-up" size={18} color={activeTab === 'popular' ? "#FFA500" : "#777"} />
+            <Text style={[styles.tabText, activeTab === 'popular' && styles.activeTabText]}>Popular</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'solved' && styles.activeTab]}
+            onPress={() => setActiveTab('solved')}
+          >
+            <Ionicons name="checkmark-circle" size={18} color={activeTab === 'solved' ? "#4CAF50" : "#777"} />
+            <Text style={[styles.tabText, activeTab === 'solved' && styles.activeTabText]}>Solved</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search discussions..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="#999"
-          />
-          {selectedTag && (
-            <TouchableOpacity 
-              style={styles.tagFilter}
-              onPress={() => setSelectedTag('')}
-            >
-              <Text style={styles.tagFilterText}>{selectedTag}</Text>
-              <Ionicons name="close-circle" size={16} color="#666" />
-            </TouchableOpacity>
-          )}
-        </View>
+        <TouchableOpacity 
+          style={styles.createPostContainer}
+          onPress={() => router.push('/new-post')}
+        >
+          <View style={styles.profileImageSmall}>
+            <Text style={styles.profileText}>P</Text>
+          </View>
+          <Text style={styles.placeholderText}>Share your parenting question...</Text>
+          <View style={styles.createPostButton}>
+            <Text style={styles.createPostButtonText}>Post</Text>
+          </View>
+        </TouchableOpacity>
 
         <FlatList
-          data={posts.filter(post => 
-            post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            post.content.toLowerCase().includes(searchQuery.toLowerCase())
-          )}
+          data={filterPosts(posts)}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
-          contentContainerStyle={styles.listContainer}
+          contentContainerStyle={styles.postsContainer}
           renderItem={({ item }) => (
             <TouchableOpacity 
               style={styles.postCard}
               onPress={() => router.push(`/post-detail?id=${item._id}`)}
             >
               <View style={styles.postHeader}>
-                <View style={styles.authorInfo}>
-                  <Ionicons name="person-circle" size={24} color="#666" />
-                  <Text style={styles.authorName}>{item.author?.name}</Text>
-                </View>
-                <Text style={styles.postDate}>
-                  {new Date(item.createdAt).toLocaleDateString()}
-                </Text>
+                <Text style={styles.postTitle}>{item.title}</Text>
+                <Text style={styles.postAuthor}>By {item.author.name}</Text>
               </View>
 
-              <Text style={styles.postTitle}>{item.title}</Text>
-              <Text style={styles.postPreview} numberOfLines={2}>
-                {item.content}
-              </Text>
+              <View style={styles.categoriesContainer}>
+                {item.tags.map((tag, index) => (
+                  <TouchableOpacity 
+                    key={index}
+                    style={styles.categoryPill}
+                    onPress={() => setSelectedTag(tag)}
+                  >
+                    <Text style={styles.categoryText}>{tag}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-              <View style={styles.postFooter}>
-                <View style={styles.tagContainer}>
-                  {item.tags.map((tag, index) => (
-                    <TouchableOpacity 
-                      key={index}
-                      style={styles.tag}
-                      onPress={() => setSelectedTag(tag)}
-                    >
-                      <Text style={styles.tagText}>{tag}</Text>
-                    </TouchableOpacity>
-                  ))}
+              <View style={styles.postStats}>
+                <View style={styles.statItem}>
+                  <Ionicons name="arrow-up" size={16} color="#4CAF50" />
+                  <Text style={styles.statValue}>
+                    {getVoteCount(item.upvotes, item.downvotes)}
+                  </Text>
                 </View>
-                <View style={styles.statsContainer}>
+                <View style={styles.statItem}>
                   <Ionicons name="chatbubble-outline" size={16} color="#666" />
-                  <Text style={styles.statsText}>{item.answerCount}</Text>
-                  {item.isSolved && (
-                    <View style={styles.solvedBadge}>
-                      <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-                      <Text style={styles.solvedText}>Solved</Text>
-                    </View>
-                  )}
+                  <Text style={styles.statValue}>
+                    {item.answerCount || 0}
+                  </Text>
                 </View>
+                {item.isSolved && (
+                  <View style={styles.solvedBadge}>
+                    <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
+                    <Text style={styles.solvedText}>Solved</Text>
+                  </View>
+                )}
               </View>
             </TouchableOpacity>
           )}
@@ -162,12 +235,17 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: '#fff',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#EFEFEF',
+    backgroundColor: '#fff',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backButton: {
     padding: 4,
@@ -177,40 +255,89 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
-  createButton: {
-    padding: 4,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-  },
   tagFilter: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e3f2fd',
+    backgroundColor: '#e0e0e0',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 16,
-    marginLeft: 8,
   },
   tagFilterText: {
-    color: '#1976d2',
     marginRight: 4,
     fontSize: 14,
+    color: '#666',
   },
-  listContainer: {
+  tabsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  activeTab: {
+    backgroundColor: '#e3f2fd',
+  },
+  tabText: {
+    marginLeft: 6,
+    fontSize: 14,
+    color: '#777',
+  },
+  activeTabText: {
+    color: '#1E88E5',
+  },
+  createPostContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 12,
+    margin: 12,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  profileImageSmall: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#e0e0e0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  profileText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#555',
+  },
+  placeholderText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#999',
+  },
+  createPostButton: {
+    backgroundColor: '#1E88E5',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  createPostButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  postsContainer: {
     padding: 12,
   },
   postCard: {
@@ -225,47 +352,23 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   postHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 12,
-  },
-  authorInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  authorName: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#666',
-  },
-  postDate: {
-    fontSize: 12,
-    color: '#999',
   },
   postTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 8,
   },
-  postPreview: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
-    lineHeight: 20,
+  postAuthor: {
+    fontSize: 12,
+    color: '#777',
   },
-  postFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  tagContainer: {
+  categoriesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    flex: 1,
+    marginBottom: 12,
   },
-  tag: {
+  categoryPill: {
     backgroundColor: '#e3f2fd',
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -273,19 +376,23 @@ const styles = StyleSheet.create({
     marginRight: 8,
     marginBottom: 4,
   },
-  tagText: {
+  categoryText: {
     color: '#1976d2',
     fontSize: 12,
   },
-  statsContainer: {
+  postStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statItem: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  statsText: {
+  statValue: {
     marginLeft: 4,
-    marginRight: 8,
+    fontSize: 12,
     color: '#666',
-    fontSize: 14,
   },
   solvedBadge: {
     flexDirection: 'row',
@@ -300,6 +407,35 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontSize: 12,
     fontWeight: '500',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    margin: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    fontSize: 16,
+    color: '#333',
+  },
+  clearButton: {
+    padding: 4,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconButton: {
+    padding: 8,
   },
 });
 

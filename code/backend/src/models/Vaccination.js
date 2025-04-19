@@ -36,6 +36,22 @@ const VaccinationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  reminderSent: {
+    type: Boolean,
+    default: false
+  },
+  lastReminderDate: {
+    type: Date,
+    default: null
+  },
+  emailReminderEnabled: {
+    type: Boolean,
+    default: true
+  },
+  reminderInterval: {
+    type: Number,
+    default: 2, // days between reminders
   }
 }, { timestamps: true });
 

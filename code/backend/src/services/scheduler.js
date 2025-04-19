@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import Vaccination from "../models/Vaccination.js";
-// import { scheduleVaccinationReminder as sendPushNotification } from "./notifications.js";
 import { sendVaccinationReminder } from "./email_vaccine.js";
+import User from "../models/User.js";
 
 // Helper function to format date for email
 const formatDate = (date) => {
@@ -13,57 +13,76 @@ const formatDate = (date) => {
   });
 };
 
-// Consolidated vaccination reminder function
-async function scheduleVaccinationReminder(vaccination, child) {
-  const userId = vaccination.createdBy._id;
-  const userEmail = vaccination.createdBy.email;
-  const expectedDate = formatDate(vaccination.expectedDate);
-
-  // // Send push notification
-  // await sendPushNotification({
-  //   userId,
-  //   vaccinationId: vaccination._id,
-  //   disease: vaccination.disease,
-  //   doseType: vaccination.doseType,
-  //   triggerDate: new Date(vaccination.expectedDate - 24*60*60*1000)
-  // });
-
-  // Send email notification
-  await sendVaccinationReminder(userEmail, {
-    childName: child.name,
-    disease: vaccination.disease,
-    doseType: vaccination.doseType,
-    expectedDate
-  });
-
-  // Update vaccination record
-  vaccination.reminderScheduled = true;
-  await vaccination.save();
-}
+// Check if reminder should be sent
+const shouldSendReminder = (vaccination) => {
+  const now = new Date();
+  const lastReminder = vaccination.lastReminderDate || new Date(0);
+  const daysSinceLastReminder = Math.floor((now - lastReminder) / (1000 * 60 * 60 * 24));
+  
+  return (
+    !vaccination.actualDate && 
+    vaccination.expectedDate >= now && 
+    daysSinceLastReminder >= (vaccination.reminderInterval || 2)
+  );
+};
 
 export const startSchedulers = () => {
-  cron.schedule('0 6 * * *', async () => {
+  // Run daily at 9:00 AM
+  cron.schedule('41 22 * * *', async () => {
     try {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-
-      const dueVaccinations = await Vaccination.find({
-        expectedDate: {
-          $lte: tomorrow,
-          $gt: new Date()
-        },
+      console.log('Starting vaccination reminder check...');
+      
+      // Find vaccinations that need reminders
+      const pendingVaccinations = await Vaccination.find({
         actualDate: null,
-        reminderScheduled: false
-      }).populate('createdBy', 'email')
+        expectedDate: { $gte: new Date() }
+      }).populate('createdBy', 'email notificationSettings')
         .populate('childId', 'name');
 
-      for (const vaccine of dueVaccinations) {
-        await scheduleVaccinationReminder(vaccine, vaccine.childId);
+      console.log(`Found ${pendingVaccinations.length} pending vaccinations`);
+
+      for (const vaccination of pendingVaccinations) {
+        try {
+          if (!shouldSendReminder(vaccination)) {
+            console.log(`Skipping reminder for vaccination ${vaccination._id} - too soon`);
+            continue;
+          }
+
+          // Check user's notification preferences
+          if (!vaccination.createdBy?.notificationSettings?.emailEnabled) {
+            console.log(`Skipping reminder for user ${vaccination.createdBy._id} - notifications disabled`);
+            continue;
+          }
+
+          // Send email reminder
+          const success = await sendVaccinationReminder(
+            vaccination.createdBy.email,
+            {
+              childName: vaccination.childId.name,
+              disease: vaccination.disease,
+              doseType: vaccination.doseType,
+              expectedDate: formatDate(vaccination.expectedDate),
+              daysUntilDue: Math.ceil((vaccination.expectedDate - new Date()) / (1000 * 60 * 60 * 24))
+            }
+          );
+
+          if (success) {
+            // Update vaccination record
+            vaccination.lastReminderDate = new Date();
+            await vaccination.save();
+            console.log(`Reminder sent for vaccination ${vaccination._id}`);
+          }
+
+          // Add delay between emails
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (error) {
+          console.error(`Error processing vaccination ${vaccination._id}:`, error);
+        }
       }
     } catch (error) {
-      console.error('Scheduler error:', error);
+      console.error('Vaccination reminder scheduler error:', error);
     }
   });
 
-  console.log('⏰ Vaccination reminder scheduler initialized ( Email)');
+  console.log('⏰ Vaccination reminder scheduler initialized');
 };
