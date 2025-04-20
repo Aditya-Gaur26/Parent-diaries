@@ -297,124 +297,137 @@ export default function GrowthTracker() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Growth Tracker</Text>
-        <TouchableOpacity style={styles.infoButton}>
-          <Ionicons name="information-circle-outline" size={24} color="#333" />
-        </TouchableOpacity>
-      </View>
-      
-      <View style={styles.banner}>
-        <Image 
-          source={require('@/assets/images/parent_child_image.jpg')}
-          style={styles.bannerImage}
-          resizeMode="cover"
-        />
-        <View style={styles.bannerOverlay}>
-          <Text style={styles.bannerTitle}>Child Development Milestones</Text>
-          <Text style={styles.bannerSubtitle}>Track your child's growth journey</Text>
-        </View>
-      </View>
-      
-      <View style={styles.progressContainer}>
-        <Text style={styles.progressTitle}>{activeAgeGroup} Progress</Text>
-        <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBar, {width: `${calculateProgress(activeAgeGroup)}%`}]} />
-        </View>
-        <Text style={styles.progressText}>{calculateProgress(activeAgeGroup)}% Complete</Text>
-      </View>
-      
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ageGroupScroll}>
-        {ageGroups.map((ageGroup) => (
-          <TouchableOpacity
-            key={ageGroup}
-            style={[
-              styles.ageGroupButton,
-              activeAgeGroup === ageGroup && styles.activeAgeGroupButton
-            ]}
-            onPress={() => setActiveAgeGroup(ageGroup)}
-          >
-            <Text 
-              style={[
-                styles.ageGroupButtonText,
-                activeAgeGroup === ageGroup && styles.activeAgeGroupButtonText
-              ]}
-            >
-              {ageGroup}
-            </Text>
+      <ScrollView style={styles.mainScroll}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
-        ))}
-      </ScrollView>
-      
-      <ScrollView style={styles.milestoneContainer}>
-        <TouchableOpacity 
-          style={styles.vaccinationButton}
-          onPress={() => router.push('/vaccination')}
-        >
-          <View style={styles.vaccinationContent}>
-            <MaterialCommunityIcons name="needle" size={24} color="#4A90E2" />
-            <Text style={styles.vaccinationText}>Track Vaccinations</Text>
-            <Ionicons name="chevron-forward" size={24} color="#666" />
-          </View>
-        </TouchableOpacity>
-
-        {Object.keys(milestoneData[activeAgeGroup]).map(category => (
-          <View key={category} style={styles.categoryContainer}>
-            <View style={styles.categoryHeader}>
-              <MaterialCommunityIcons 
-                name={
-                  category === 'physical' ? 'human-handsup' : 
-                  category === 'cognitive' ? 'brain' :
-                  category === 'social' ? 'account-group' : 'message-text'
-                } 
-                size={24} 
-                color="#4A90E2" 
-              />
-              <Text style={styles.categoryTitle}>
-                {category.charAt(0).toUpperCase() + category.slice(1)} Development
-              </Text>
-            </View>
-            
-            {milestoneData[activeAgeGroup][category].map((milestone, index) => {
-              const milestoneKey = `${activeAgeGroup}-${category}-${milestone}`;
-              const isCompleted = completedMilestones[milestoneKey];
-              
-              return (
-                <TouchableOpacity 
-                  key={index}
-                  style={[styles.milestoneItem, isCompleted && styles.completedMilestone]}
-                  onPress={() => toggleMilestone(milestone, category)}
-                >
-                  <Text style={[styles.milestoneText, isCompleted && styles.completedMilestoneText]}>
-                    {milestone}
-                  </Text>
-                  <View style={[styles.checkbox, isCompleted && styles.checkboxChecked]}>
-                    {isCompleted && <Ionicons name="checkmark" size={16} color="white" />}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ))}
-        
-        <View style={styles.tipContainer}>
-          <View style={styles.tipHeader}>
-            <Ionicons name="bulb-outline" size={24} color="#F5A623" />
-            <Text style={styles.tipTitle}>Development Tip</Text>
-          </View>
-          <Text style={styles.tipText}>
-            Every child develops at their own pace. These milestones are general guidelines.
-            If you have concerns about your child's development, consult with your pediatrician.
-          </Text>
+          <Text style={styles.headerTitle}>Growth Tracker</Text>
+          <TouchableOpacity style={styles.infoButton}>
+            <Ionicons name="information-circle-outline" size={24} color="#333" />
+          </TouchableOpacity>
         </View>
         
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Source: CDC Developmental Milestones
-          </Text>
+        <View style={styles.banner}>
+          <Image 
+            source={require('@/assets/images/parent_child_image.jpg')}
+            style={styles.bannerImage}
+            resizeMode="cover"
+          />
+          <View style={styles.bannerOverlay}>
+            <Text style={styles.bannerTitle}>Child Development Milestones</Text>
+            <Text style={styles.bannerSubtitle}>Track your child's growth journey</Text>
+          </View>
+        </View>
+        
+        <View style={styles.progressContainer}>
+          <Text style={styles.progressTitle}>{activeAgeGroup} Progress</Text>
+          <View style={styles.progressBarContainer}>
+            <View style={[styles.progressBar, {width: `${calculateProgress(activeAgeGroup)}%`}]} />
+          </View>
+          <Text style={styles.progressText}>{calculateProgress(activeAgeGroup)}% Complete</Text>
+        </View>
+        
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ageGroupScroll}>
+          {ageGroups.map((ageGroup) => (
+            <TouchableOpacity
+              key={ageGroup}
+              style={[
+                styles.ageGroupButton,
+                activeAgeGroup === ageGroup && styles.activeAgeGroupButton
+              ]}
+              onPress={() => setActiveAgeGroup(ageGroup)}
+            >
+              <Text 
+                style={[
+                  styles.ageGroupButtonText,
+                  activeAgeGroup === ageGroup && styles.activeAgeGroupButtonText
+                ]}
+              >
+                {ageGroup}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        
+        <View style={styles.milestoneContainer}>
+          <TouchableOpacity 
+            style={styles.vaccinationButton}
+            onPress={() => router.push('/vaccination')}
+          >
+            <View style={styles.vaccinationContent}>
+              <MaterialCommunityIcons name="needle" size={24} color="#4A90E2" />
+              <Text style={styles.vaccinationText}>Track Vaccinations</Text>
+              <Ionicons name="chevron-forward" size={24} color="#666" />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.vaccinationButton}
+            onPress={() => router.push('/milestone-tracker')}
+          >
+            <View style={styles.vaccinationContent}>
+              <MaterialCommunityIcons name="star-circle-outline" size={24} color="#FF9500" />
+              <Text style={styles.vaccinationText}>Captured Milestones</Text>
+              <Ionicons name="chevron-forward" size={24} color="#666" />
+            </View>
+          </TouchableOpacity>
+
+          {Object.keys(milestoneData[activeAgeGroup]).map(category => (
+            <View key={category} style={styles.categoryContainer}>
+              <View style={styles.categoryHeader}>
+                <MaterialCommunityIcons 
+                  name={
+                    category === 'physical' ? 'human-handsup' : 
+                    category === 'cognitive' ? 'brain' :
+                    category === 'social' ? 'account-group' : 'message-text'
+                  } 
+                  size={24} 
+                  color="#4A90E2" 
+                />
+                <Text style={styles.categoryTitle}>
+                  {category.charAt(0).toUpperCase() + category.slice(1)} Development
+                </Text>
+              </View>
+              
+              {milestoneData[activeAgeGroup][category].map((milestone, index) => {
+                const milestoneKey = `${activeAgeGroup}-${category}-${milestone}`;
+                const isCompleted = completedMilestones[milestoneKey];
+                
+                return (
+                  <TouchableOpacity 
+                    key={index}
+                    style={[styles.milestoneItem, isCompleted && styles.completedMilestone]}
+                    onPress={() => toggleMilestone(milestone, category)}
+                  >
+                    <Text style={[styles.milestoneText, isCompleted && styles.completedMilestoneText]}>
+                      {milestone}
+                    </Text>
+                    <View style={[styles.checkbox, isCompleted && styles.checkboxChecked]}>
+                      {isCompleted && <Ionicons name="checkmark" size={16} color="white" />}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
+          
+          <View style={styles.tipContainer}>
+            <View style={styles.tipHeader}>
+              <Ionicons name="bulb-outline" size={24} color="#F5A623" />
+              <Text style={styles.tipTitle}>Development Tip</Text>
+            </View>
+            <Text style={styles.tipText}>
+              Every child develops at their own pace. These milestones are general guidelines.
+              If you have concerns about your child's development, consult with your pediatrician.
+            </Text>
+          </View>
+          
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              Source: CDC Developmental Milestones
+            </Text>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -427,6 +440,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  mainScroll: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',

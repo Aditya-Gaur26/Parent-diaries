@@ -63,21 +63,21 @@ const LoginScreen = () => {
       if (token) {
         // Get user role to determine which home screen to show
         const role = await AsyncStorage.getItem('userRole');
-        console.log('User role detected:', role);
+        // console.log('User role detected:', role);
         
         // Redirect based on role
         switch (role) {
           case 'admin':
-            console.log('Redirecting to admin home screen');
+            // console.log('Redirecting to admin home screen');
             router.replace('/adminHomeScreen');
             break;
           case 'doctor':
-            console.log('Redirecting to doctor home screen');
+            // console.log('Redirecting to doctor home screen');
             router.replace('/doctorHomeScreen');
             break;
           case 'user':
           default:
-            console.log('Redirecting to regular home screen');
+            // console.log('Redirecting to regular home screen');
             router.replace('/homeScreen');
             break;
         }
@@ -98,12 +98,12 @@ const LoginScreen = () => {
 
     const handleDeepLink = async (event: DeepLinkEvent): Promise<void> => {
       const url: string = event.url;
-      console.log('Deep link detected:', url);
+      // console.log('Deep link detected:', url);
       
       if (url.includes('token=')) {
       try {
         const token: string = url.split('token=')[1].split('&')[0];
-        console.log('Token received from deep link:', token);
+        // console.log('Token received from deep link:', token);
         await AsyncStorage.setItem('authToken', token);
         router.replace('/homeScreen');
       } catch (error) {
@@ -118,7 +118,7 @@ const LoginScreen = () => {
     // Check if app was opened with a URL
     Linking.getInitialURL().then(url => {
       if (url) {
-        console.log('App opened with URL:', url);
+        // console.log('App opened with URL:', url);
         handleDeepLink({ url });
       }
     });
@@ -152,6 +152,7 @@ const LoginScreen = () => {
       //   return;
       // }
       // console.log("login started")
+      console.log(`${BACKEND_URL}/api/users/login`)
 
       const response = await axios.post(`${BACKEND_URL}/api/users/login`, { email, password });
       const { token, role } = response.data;
@@ -166,21 +167,21 @@ const LoginScreen = () => {
       // Redirect based on user role
       switch (role) {
         case 'admin':
-          console.log('Admin login detected, redirecting to admin home');
+          // console.log('Admin login detected, redirecting to admin home');
           router.replace('/adminHomeScreen');
           break;
         case 'doctor':
-          console.log('Doctor login detected, redirecting to doctor home');
+          // console.log('Doctor login detected, redirecting to doctor home');
           router.replace('/doctorHomeScreen');
           break;
         case 'user':
         default:
-          console.log('User login detected, redirecting to user home');
+          // console.log('User login detected, redirecting to user home');
           router.replace('/homeScreen');
           break;
       }
     } catch (error) {
-      console.log('Login error:', error);
+      // console.log('Login error:', error);
       
       // Handle pending doctor approval
       if (axios.isAxiosError(error) && error.response?.status === 403 && error.response.data?.isPending) {
@@ -199,7 +200,7 @@ const LoginScreen = () => {
   const handleGoogleLogin = async () => {
     try {
       setIsLoading(true);
-      console.log('Starting Google login...');
+      // console.log('Starting Google login...');
       
       // Store a flag to identify authentication is in progress
       await AsyncStorage.setItem('googleAuthInProgress', 'true');
@@ -214,17 +215,17 @@ const LoginScreen = () => {
         }
       );
       
-      console.log('Auth result type:', result.type);
+      // console.log('Auth result type:', result.type);
       await AsyncStorage.removeItem('googleAuthInProgress');
       
       // Handle the result
       if (result.type === 'success') {
         const url = result.url;
-        console.log('Success URL:', url);
+        // console.log('Success URL:', url);
         
         if (url.includes('token=')) {
           const token = url.split('token=')[1].split('&')[0];
-          console.log('Token received from WebBrowser');
+          // console.log('Token received from WebBrowser');
           await AsyncStorage.setItem('authToken', token);
           router.replace('/homeScreen');
         } else if (url.includes('error=')) {
@@ -232,7 +233,7 @@ const LoginScreen = () => {
           console.error('Auth error:', error);
           Alert.alert('Login Failed', error);
         } else {
-          console.log('No token found in URL, checking AsyncStorage');
+          // console.log('No token found in URL, checking AsyncStorage');
           // Check if token was stored via deep link handler
           const storedToken = await AsyncStorage.getItem('authToken');
           if (storedToken) {
@@ -240,7 +241,7 @@ const LoginScreen = () => {
           }
         }
       } else {
-        console.log('Auth cancelled or failed, checking for deep link token');
+        // console.log('Auth cancelled or failed, checking for deep link token');
         // Check if token was stored via deep link handler
         const storedToken = await AsyncStorage.getItem('authToken');
         if (storedToken) {

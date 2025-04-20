@@ -1,13 +1,7 @@
 import User from '../models/User.js';
-import bcrypt from 'bcryptjs';
 import { sendReportReply } from '../services/send_report_reply.js';
 import Report from '../models/Report.js';
 
-/**
- * Register a new doctor account as administrator
- * @route POST /api/admin/register-doctor
- * @access Private (Admin only)
- */
 export const registerDoctor = async (req, res) => {
   try {
     const { 
@@ -106,11 +100,6 @@ export const registerDoctor = async (req, res) => {
   }
 };
 
-/**
- * Get all registered doctors
- * @route GET /api/admin/doctors
- * @access Private (Admin only)
- */
 export const getDoctors = async (req, res) => {
   try {
     const doctors = await User.find({ role: 'doctor' })
@@ -124,11 +113,6 @@ export const getDoctors = async (req, res) => {
   }
 };
 
-/**
- * Get a specific doctor by ID
- * @route GET /api/admin/doctors/:doctorId
- * @access Private (Admin only)
- */
 export const getDoctor = async (req, res) => {
   try {
     const { doctorId } = req.params;
@@ -155,11 +139,6 @@ export const getDoctor = async (req, res) => {
   }
 };
 
-/**
- * Update doctor's approval status or other details
- * @route PUT /api/admin/doctors/:doctorId
- * @access Private (Admin only)
- */
 export const updateDoctor = async (req, res) => {
   try {
     const { doctorId } = req.params;
@@ -191,11 +170,6 @@ export const updateDoctor = async (req, res) => {
   }
 };
 
-/**
- * Delete a doctor
- * @route DELETE /api/admin/doctors/:doctorId
- * @access Private (Admin only)
- */
 export const deleteDoctor = async (req, res) => {
   try {
     const { doctorId } = req.params;
@@ -219,11 +193,6 @@ export const deleteDoctor = async (req, res) => {
   }
 };
 
-/**
- * Get all reports with pagination and filtering
- * @route GET /api/admin/reports
- * @access Private (Admin only)
- */
 export const getReports = async (req, res) => {
   try {
     const { 
@@ -273,11 +242,6 @@ export const getReports = async (req, res) => {
   }
 };
 
-/**
- * Get a specific report by ID
- * @route GET /api/admin/reports/:reportId
- * @access Private (Admin only)
- */
 export const getReport = async (req, res) => {
   try {
     const { reportId } = req.params;
@@ -303,11 +267,6 @@ export const getReport = async (req, res) => {
   }
 };
 
-/**
- * Update report status
- * @route PUT /api/admin/reports/:reportId/status
- * @access Private (Admin only)
- */
 export const updateReportStatus = async (req, res) => {
   try {
     const { reportId } = req.params;
@@ -341,11 +300,6 @@ export const updateReportStatus = async (req, res) => {
   }
 };
 
-/**
- * Reply to a report and send email to the user
- * @route POST /api/admin/reports/:reportId/reply
- * @access Private (Admin only)
- */
 export const replyToReport = async (req, res) => {
   try {
     const { reportId } = req.params;

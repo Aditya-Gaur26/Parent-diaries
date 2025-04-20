@@ -1,3 +1,4 @@
+// Import required modules and controller functions
 import express from 'express';
 import authenticate_admin from '../middlewares/authenticate_admin.js';
 import { 
@@ -14,90 +15,37 @@ import {
 
 const router = express.Router();
 
-/**
- * Test endpoint to verify router functionality
- * @route GET /api/admin/
- * @access Public
- * @returns {Object} Message confirming route is working
- */
+// Health check endpoint
 router.get('/', (req, res) => {
   res.send('Admin route is working!');
 });
 
-/**
- * Register a new doctor account
- * @route POST /api/admin/register-doctor
- * @access Private (Admin only)
- * @requires Authentication
- */
+// Create new doctor account (requires admin auth)
 router.post('/register-doctor', authenticate_admin, registerDoctor);
 
-/**
- * Get all registered doctors
- * @route GET /api/admin/doctors
- * @access Private (Admin only)
- * @requires Authentication
- */
+// Get list of all registered doctors
 router.get('/doctors', authenticate_admin, getDoctors);
 
-/**
- * Get a specific doctor by ID
- * @route GET /api/admin/doctors/:doctorId
- * @access Private (Admin only)
- * @requires Authentication
- */
+// Get single doctor by ID
 router.get('/doctors/:doctorId', authenticate_admin, getDoctor);
 
-/**
- * Update doctor's approval status or other details
- * @route PUT /api/admin/doctors/:doctorId
- * @access Private (Admin only)
- * @requires Authentication
- */
+// Update doctor details (approval status, etc)
 router.put('/doctors/:doctorId', authenticate_admin, updateDoctor);
 
-/**
- * Delete a doctor
- * @route DELETE /api/admin/doctors/:doctorId
- * @access Private (Admin only)
- * @requires Authentication
- */
+// Remove doctor from system
 router.delete('/doctors/:doctorId', authenticate_admin, deleteDoctor);
 
-/**
- * Reports Management Routes
- */
-
-/**
- * Get all user reports
- * @route GET /api/admin/reports
- * @access Private (Admin only)
- * @requires Authentication
- */
+// Report management routes
+// Fetch all user reports with filters and pagination
 router.get('/reports', authenticate_admin, getReports);
 
-/**
- * Get a specific report by ID
- * @route GET /api/admin/reports/:reportId
- * @access Private (Admin only)
- * @requires Authentication
- */
+// Get detailed view of single report
 router.get('/reports/:reportId', authenticate_admin, getReport);
 
-/**
- * Update report status
- * @route PUT /api/admin/reports/:reportId/status
- * @access Private (Admin only)
- * @requires Authentication
- */
+// Update report status (Open/In Progress/Resolved/Closed)
 router.put('/reports/:reportId/status', authenticate_admin, updateReportStatus);
 
-/**
- * Reply to a report
- * @route POST /api/admin/reports/:reportId/reply
- * @access Private (Admin only)
- * @requires Authentication
- */
+// Add admin reply to a report
 router.post('/reports/:reportId/reply', authenticate_admin, replyToReport);
 
 export default router;

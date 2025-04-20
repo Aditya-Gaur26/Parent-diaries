@@ -52,7 +52,19 @@ const UserSchema = new mongoose.Schema(
       enum: ['user', 'admin', 'doctor'],
       default: 'user',
     },
-    mobile_number: String,
+    mobile_number: {
+      type: String,
+      // validate: {
+      //   validator: function(v) {
+      //     return /^\+?[\d\s-]{10,}$/.test(v);
+      //   },
+      //   message: props => `${props.value} is not a valid phone number!`
+      // }
+    },
+    gender: {
+      type: String,
+      enum: ['Male', 'Female', 'Other']
+    },
     age: Number,
     dob: Date,
     googleid: String,
@@ -109,8 +121,8 @@ const UserSchema = new mongoose.Schema(
     // Doctor specific fields
     specialization: {
       type: String,
-      enum: ['Pediatrician', 'Neonatologist', 'Pediatric Neurologist', 'Pediatric Cardiologist', 'General Pediatrician'],
-      default: 'Pediatrician'
+      enum: ['Pediatrician', 'Neonatologist', 'Pediatric Neurologist', 'Pediatric Cardiologist', 'General Pediatrician','None'],
+      default: 'None'
     },
     qualification: String,
     licenseNumber: String,

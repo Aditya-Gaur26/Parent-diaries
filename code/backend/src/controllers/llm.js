@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import ChatSession from "../models/ChatSession.js";
 import ChatHistory from "../models/ChatHistory.js";
+import User from "../models/User.js";
+import { detectMilestone } from "./milestone.js";
 
 dotenv.config();
 const openai = new OpenAI({
@@ -135,6 +137,77 @@ const addMessagesToHistory = async (sessionId, userMessage, assistantMessage) =>
 };
 
 /**
+ * Generates formatted children information
+ * @param {Array} children - Array of child objects
+ * @returns {string} Formatted children information
+ */
+const generateChildrenInfo = (children) => {
+  // Create a formatted string with child details
+  let childrenInfo = "";
+
+  if (children && children.length > 0) {
+    children.forEach((child, index) => {
+      // Calculate age from date of birth
+      const birthDate = new Date(child.dateOfBirth);
+      const today = new Date();
+      let years = today.getFullYear() - birthDate.getFullYear();
+      let months = today.getMonth() - birthDate.getMonth();
+
+      if (months < 0 || (months === 0 && today.getDate() < birthDate.getDate())) {
+        years--;
+        months += 12;
+      }
+
+      // Format age string based on years
+      let ageStr = "";
+      if (years < 1) {
+        ageStr = `${months} month${months !== 1 ? 's' : ''}`;
+      } else if (months === 0) {
+        ageStr = `${years} year${years !== 1 ? 's' : ''}`;
+      } else {
+        ageStr = `${years} year${years !== 1 ? 's' : ''} and ${months} month${months !== 1 ? 's' : ''}`;
+      }
+
+      childrenInfo += `Child ${index + 1}: ${child.name}, ${ageStr} old, ${child.gender}`;
+
+      // Add medical info if available
+      if (child.medicalConditions && child.medicalConditions.length > 0) {
+        childrenInfo += `, Medical conditions: ${child.medicalConditions.join(", ")}`;
+      }
+
+      if (child.allergies && child.allergies.length > 0) {
+        childrenInfo += `, Allergies: ${child.allergies.join(", ")}`;
+      }
+
+      childrenInfo += ".\n";
+    });
+  }
+
+  return childrenInfo;
+};
+
+/**
+ * Generates a customized system prompt with child information
+ * @param {Array} children - Array of child objects
+ */
+const generatePersonalizedPrompt = (children) => {
+  // Generate children information
+  const childrenInfo = generateChildrenInfo(children);
+
+  // Create personalized system prompt using template literal (f-string equivalent)
+  const personalizedPrompt = `You are an empathetic AI parenting companion specifically tailored to help with the following children:
+
+${childrenInfo}
+Provide personalized parenting advice that accounts for each child's specific age, gender, and any medical considerations noted above. When the parent mentions a child by name, refer to your knowledge about that specific child.
+
+Respond to parents' daily journals with validation, specific observations, age-appropriate strategies tailored to their child's developmental stage, and actionable suggestions. Maintain a supportive tone that respects their family's uniqueness.
+
+Connect challenges to developmental milestones appropriate for their children's ages. Always prioritize safety and suggest professional help when needed. Your goal is to strengthen parent-child relationships and help parents find joy in their journey.`;
+
+  return personalizedPrompt;
+};
+
+/**
  * Main LLM Controller
  * Handles chat interactions with OpenAI's API
  * Manages chat sessions and message history
@@ -148,6 +221,28 @@ export const llm = async (req, res) => {
       return res.status(401).json({ error: "Authentication required" });
     }
 
+    // Fetch user info including children
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Get children information
+    const children = user.children || [];
+
+    // Generate children information string for use in both prompt and milestone detection
+    const childrenInfo = generateChildrenInfo(children);
+
+    // Generate personalized system prompt using the children info
+    const personalizedPrompt = `You are an empathetic AI parenting companion specifically tailored to help with the following children:
+
+${childrenInfo}
+Provide personalized parenting advice that accounts for each child's specific age, gender, and any medical considerations noted above. When the parent mentions a child by name, refer to your knowledge about that specific child.
+
+Respond to parents' daily journals with validation, specific observations, age-appropriate strategies tailored to their child's developmental stage, and actionable suggestions. Maintain a supportive tone that respects their family's uniqueness.
+
+Connect challenges to developmental milestones appropriate for their children's ages. Always prioritize safety and suggest professional help when needed. Your goal is to strengthen parent-child relationships and help parents find joy in their journey.`;
+
     // Get session ID from header
     const requestSessionId = req.headers['session-id'];
     console.log(`Request session ID: ${requestSessionId}`);
@@ -160,10 +255,13 @@ export const llm = async (req, res) => {
     let messages = [];
     let userMessage = "";
 
+    // Generate personalized system prompt
+    // const personalizedPrompt = generatePersonalizedPrompt(children);
+
     // Handle input formats
     if (req.body.message) {
-      // Simple format - single message
-      messages = [{ role: "system", content: "You are a helpful AI assistant with memory of the conversation." }];
+      // Simple format - single message with personalized system prompt
+      messages = [{ role: "system", content: personalizedPrompt }];
       userMessage = req.body.message;
 
       // Get chat history
@@ -183,7 +281,21 @@ export const llm = async (req, res) => {
 
     } else if (req.body.messages && Array.isArray(req.body.messages)) {
       // Advanced format - messages array
-      messages = req.body.messages;
+      // Replace the first system message with our personalized one if it exists
+      let systemMessageFound = false;
+
+      messages = req.body.messages.map((msg, index) => {
+        if (msg.role === "system") {
+          systemMessageFound = true;
+          return { ...msg, content: personalizedPrompt };
+        }
+        return msg;
+      });
+
+      if (!systemMessageFound) {
+        // Add system message at the beginning if not found
+        messages.unshift({ role: "system", content: personalizedPrompt });
+      }
 
       // Extract user message (last user message in array)
       for (let i = messages.length - 1; i >= 0; i--) {
@@ -200,7 +312,9 @@ export const llm = async (req, res) => {
       return res.status(400).json({ error: "Message is required" });
     }
 
-    // Call OpenAI API
+    console.log("Using personalized system prompt with child information");
+
+    // Call OpenAI API with the personalized prompt and messages
     const completion = await openai.chat.completions.create({
       messages: messages,
       model: "gpt-4o",
@@ -211,6 +325,16 @@ export const llm = async (req, res) => {
 
     // Save to chat history
     await addMessagesToHistory(sessionId, userMessage, assistantResponse);
+
+    // Check for milestones in background without blocking the response
+    process.nextTick(async () => {
+      try {
+        // Pass user message, userId, sessionId and children info to milestone.js
+        await detectMilestone(userMessage, userId, sessionId, childrenInfo);
+      } catch (error) {
+        console.error("Error in milestone detection:", error);
+      }
+    });
 
     // Send back the response with session ID
     return res.status(200).json({

@@ -13,8 +13,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
-import { BACKEND_URL } from '../config/environment';
 import useRoleProtection from '../hooks/useRoleProtection';
 
 export default function SystemSettingsScreen() {

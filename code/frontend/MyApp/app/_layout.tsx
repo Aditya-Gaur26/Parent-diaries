@@ -1,8 +1,8 @@
 import { Stack } from 'expo-router';
 import React from 'react';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { Slot } from 'expo-router';
-import { LogBox } from 'react-native';
+import { LogBox, StyleSheet, StatusBar } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 // Suppress warnings during development
 LogBox.ignoreAllLogs(); // Ignore all warnings
@@ -23,19 +23,34 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const backgroundColor = colorScheme === 'dark' ? '#000' : '#fff';
 
   return (
-    <Stack
-      initialRouteName="welcome"
-      screenOptions={{
-        headerShown: false,
-        contentStyle: {
-          backgroundColor: colorScheme === 'dark' ? '#000' : '#fff',
-        },
-      }}>
-      <Stack.Screen name="welcome" options={{ animation: 'none' }} />
-      <Stack.Screen name="login-signup" options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-    </Stack>
+    <SafeAreaProvider>
+      <StatusBar
+        barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}
+        backgroundColor={backgroundColor}
+      />
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <Stack
+          initialRouteName="welcome"
+          screenOptions={{
+            headerShown: false,
+            contentStyle: {
+              backgroundColor: backgroundColor,
+            },
+          }}>
+          <Stack.Screen name="welcome" options={{ animation: 'none' }} />
+          <Stack.Screen name="login-signup" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+        </Stack>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});

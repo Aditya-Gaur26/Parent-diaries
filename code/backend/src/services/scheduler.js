@@ -5,84 +5,76 @@ import User from "../models/User.js";
 
 // Helper function to format date for email
 const formatDate = (date) => {
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
-};
-
-// Check if reminder should be sent
-const shouldSendReminder = (vaccination) => {
-  const now = new Date();
-  const lastReminder = vaccination.lastReminderDate || new Date(0);
-  const daysSinceLastReminder = Math.floor((now - lastReminder) / (1000 * 60 * 60 * 24));
-  
-  return (
-    !vaccination.actualDate && 
-    vaccination.expectedDate >= now && 
-    daysSinceLastReminder >= (vaccination.reminderInterval || 2)
-  );
 };
 
 export const startSchedulers = () => {
-  // Run daily at 9:00 AM
-  cron.schedule('41 22 * * *', async () => {
+  cron.schedule("00 08 * * *", async () => {
     try {
-      console.log('Starting vaccination reminder check...');
+      console.log("Starting vaccination reminder check...");
+      const now = new Date();
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0); // Last day of next month
       
-      // Find vaccinations that need reminders
-      const pendingVaccinations = await Vaccination.find({
-        actualDate: null,
-        expectedDate: { $gte: new Date() }
-      }).populate('createdBy', 'email notificationSettings')
-        .populate('childId', 'name');
+      const users = await User.find().populate("children");
+      console.log(`Found ${users.length} users`);
 
-      console.log(`Found ${pendingVaccinations.length} pending vaccinations`);
-
-      for (const vaccination of pendingVaccinations) {
+      for (const user of users) {
         try {
-          if (!shouldSendReminder(vaccination)) {
-            console.log(`Skipping reminder for vaccination ${vaccination._id} - too soon`);
-            continue;
-          }
+          for (const child of user.children) {
+            console.log(
+              `\nChecking vaccinations for child: ${child.name} (ID: ${child._id})`
+            );
 
-          // Check user's notification preferences
-          if (!vaccination.createdBy?.notificationSettings?.emailEnabled) {
-            console.log(`Skipping reminder for user ${vaccination.createdBy._id} - notifications disabled`);
-            continue;
-          }
+            // Get all vaccinations for this child
+            const childVaccinations = await Vaccination.find({
+              childId: child._id,
+              $or: [
+                { expectedDate: { $lt: now } }, // Overdue
+                { expectedDate: { $lte: nextMonth } } // Due within next month
+              ]
+            });
 
-          // Send email reminder
-          const success = await sendVaccinationReminder(
-            vaccination.createdBy.email,
-            {
-              childName: vaccination.childId.name,
-              disease: vaccination.disease,
-              doseType: vaccination.doseType,
-              expectedDate: formatDate(vaccination.expectedDate),
-              daysUntilDue: Math.ceil((vaccination.expectedDate - new Date()) / (1000 * 60 * 60 * 24))
+            console.log(`Found ${childVaccinations.length} relevant vaccinations for ${child.name}`);
+
+            // Log details of each vaccination
+            childVaccinations.forEach((vac) => {
+              console.log(
+                `- ${vac.disease} ${vac.doseType} due on ${formatDate(
+                  vac.expectedDate
+                )}, status: ${vac.actualDate ? "Completed" : "Pending"}`
+              );
+            });
+            
+            if (childVaccinations.length > 0) {
+              // Send single consolidated email for all vaccinations
+              const success = await sendVaccinationReminder(user.email, {
+                childName: child.name,
+                vaccinations: childVaccinations.map(vac => ({
+                  disease: vac.disease,
+                  doseType: vac.doseType,
+                  expectedDate: formatDate(vac.expectedDate),
+                  status: vac.expectedDate < now ? "Overdue" : "Pending"
+                }))
+              });
+
+              if (success) {
+                console.log(`✓ Vaccination summary sent for ${child.name}`);
+              }
             }
-          );
-
-          if (success) {
-            // Update vaccination record
-            vaccination.lastReminderDate = new Date();
-            await vaccination.save();
-            console.log(`Reminder sent for vaccination ${vaccination._id}`);
           }
-
-          // Add delay between emails
-          await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (error) {
-          console.error(`Error processing vaccination ${vaccination._id}:`, error);
+          console.error(`Error processing user ${user._id}:`, error);
         }
       }
     } catch (error) {
-      console.error('Vaccination reminder scheduler error:', error);
+      console.error("Vaccination reminder scheduler error:", error);
     }
   });
 
-  console.log('⏰ Vaccination reminder scheduler initialized');
+  console.log("⏰ Vaccination reminder scheduler initialized");
 };

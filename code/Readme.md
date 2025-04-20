@@ -15,7 +15,7 @@
 
 3) **Start the Backend Server**
    - Navigate to the backend directory: `cd code/backend`
-   - Run the server using: `nodemon index.js`
+   - Run the server using: `npm run dev`
 
 4) **Run the Frontend Application**
    - Navigate to the frontend directory: `cd code/frontend/MyApp`

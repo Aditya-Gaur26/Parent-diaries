@@ -33,7 +33,7 @@ const SignUpScreen = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       if (token) {
-        console.log('User is already logged in, redirecting to home');
+        // console.log('User is already logged in, redirecting to home');
         router.replace('/homeScreen');
       }
     } catch (error) {

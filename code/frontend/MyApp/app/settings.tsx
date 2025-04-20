@@ -11,6 +11,7 @@ import {
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BACKEND_URL } from '@/config/environment';
 
 const SettingsScreen = () => {
   const router = useRouter();
@@ -69,15 +70,35 @@ const SettingsScreen = () => {
 
   const handleLogout = async () => {
     try {
+      // Show loading indicator
+
+      const authToken = await AsyncStorage.getItem('authToken');
+      
+      // Call the logout API with the correct endpoint
+      const response = await fetch(`${BACKEND_URL}/api/users/logout`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Logout failed with status: ${response.status}`);
+      }
+
       // Remove the auth token from AsyncStorage
-      await AsyncStorage.removeItem('authToken');
+      await         AsyncStorage.removeItem('authToken');
       // Remove any user data
-      await AsyncStorage.removeItem('user');
+      await         AsyncStorage.removeItem('user');
       // Navigate to the login-signup page
       router.replace('/login-signup');
     } catch (error) {
       console.error('Logout failed:', error);
-      Alert.alert('Error', 'Failed to logout. Please try again.');
+      Alert.alert(
+        'Logout Failed',
+        'Unable to logout. Please check your connection and try again.'
+      );
     }
   };
 
