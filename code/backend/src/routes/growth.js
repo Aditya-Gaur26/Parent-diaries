@@ -1,5 +1,5 @@
 import express from 'express';
-import { updateGrowth, getGrowthByChild, getMedicalReport } from '../controllers/growthController.js';
+import { updateGrowth, getGrowthByChild} from '../controllers/growthController.js';
 import authenticateJWT from '../middlewares/authenticate_jwt.js';
 import authenticateDoctor from '../middlewares/authenticate_doctor.js';
 
@@ -12,9 +12,9 @@ router.post('/', authenticateJWT, updateGrowth);
 router.get('/child/:childId', authenticateJWT, getGrowthByChild);
 
 router.get(
-    '/child/:childId/medical-report',
+    '/child/:childId/medical-report/',
     authenticateDoctor,
-    getMedicalReport
+    getGrowthByChild
   );
 
 export default router;

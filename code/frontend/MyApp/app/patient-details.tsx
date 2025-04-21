@@ -11,7 +11,7 @@ export default function PatientDetailsScreen() {
   const { patientId } = useLocalSearchParams();
   const [child, setChild] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+  const [medicalReport, setMedicalReport] = useState(null);
 
   useEffect(() => {
     if (!patientId) {
@@ -40,6 +40,13 @@ export default function PatientDetailsScreen() {
     router.push({
       pathname: '/doctor-chat',
       params: { parentId: child.parentId }
+    });
+  };
+
+  const openMilestoneChart = () => {
+    router.push({
+      pathname: '/medical-report',
+      params: { childId: patientId }
     });
   };
 
@@ -74,6 +81,16 @@ export default function PatientDetailsScreen() {
             <TouchableOpacity style={styles.chatButton} onPress={openChat}>
               <Text style={styles.chatButtonText}>Chat with Parent</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.chatButton} onPress={openMilestoneChart}>
+              <Text style={styles.chatButtonText}>Get Patient Milestone Chart</Text>
+            </TouchableOpacity>
+
+            {medicalReport && (
+              <View style={styles.reportContainer}>
+                <Text style={styles.reportTitle}>Medical Report</Text>
+                <Text style={styles.reportText}>{JSON.stringify(medicalReport, null, 2)}</Text>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -139,4 +156,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: '#f9f9f9',
   },
+  reportContainer: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+  },
+  reportTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  reportText: {
+    fontSize: 14,
+    lineHeight: 20,
+  }
 });
