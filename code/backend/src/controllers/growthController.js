@@ -3,23 +3,20 @@ import Growth from '../models/growth.js'; // Adjust path as needed
 // POST /api/growth
 export const updateGrowth = async (req, res) => {
   try {
-    const { userId, childId, ageInMonths, entries } = req.body;
+    const { childId, ageInMonths, entries } = req.body;
 
     // Input validation
-    if (!userId || !childId || !ageInMonths || !Array.isArray(entries)) {
+    if (!childId || !ageInMonths || !Array.isArray(entries)) {
       return res.status(400).json({ message: 'Missing or invalid fields' });
     }
 
     // Try to find an existing growth document for the same child and age
-    let growth = await Growth.findOne({ userId, childId, ageInMonths });
+    let growth = await Growth.findOne({ childId, ageInMonths });
 
     if (growth) {
-      // Merge or overwrite entries - Here we overwrite existing entries
       growth.entries = entries;
     } else {
-      // Create new entry
       growth = new Growth({
-        userId,
         childId,
         ageInMonths,
         entries
@@ -63,3 +60,36 @@ export const getGrowthByChild = async (req, res) => {
   }
 };
 
+// GET /growth/doctor-view/:childId
+export const getGrowthSummaryForDoctor = async (req, res) => {
+  try {
+    const { childId } = req.params;
+
+    if (!childId) {
+      return res.status(400).json({ message: 'Child ID is required' });
+    }
+
+    const growthData = await Growth.find({ childId }).select(
+      'ageInMonths entries.type entries.detail entries.completed'
+    ).sort({ ageInMonths: 1 });
+
+    if (!growthData.length) {
+      return res.status(404).json({ message: 'No growth data found for the specified child' });
+    }
+
+    // Optional: summarize progress by category
+    const summary = growthData.map(entry => ({
+      ageInMonths: entry.ageInMonths,
+      progress: entry.entries.map(e => ({
+        type: e.type,
+        detail: e.detail,
+        completed: e.completed
+      }))
+    }));
+
+    return res.status(200).json({ summary });
+  } catch (error) {
+    console.error('Doctor view error:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};

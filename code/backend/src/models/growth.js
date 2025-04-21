@@ -126,11 +126,6 @@ const DevelopmentEntrySchema = new Schema({
 }, { _id: false });
 
 const GrowthSchema = new Schema({
-  userId: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
   childId: {
     type: Schema.Types.ObjectId,
     required: true
