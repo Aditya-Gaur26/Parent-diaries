@@ -307,7 +307,7 @@ export default function DoctorHomeScreen() {
         <View style={styles.patientsSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Patients</Text>
-            <TouchableOpacity onPress={() => router.push('/view-patients')}>
+            <TouchableOpacity onPress={() => router.push('/doctor-patients')}>
               <Text style={styles.seeAllText}>See all</Text>
             </TouchableOpacity>
           </View>

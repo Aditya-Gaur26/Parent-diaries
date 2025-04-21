@@ -54,7 +54,7 @@ export default function GrowthTracker() {
 
           <TouchableOpacity 
             style={styles.navigationButton}
-            onPress={() => router.push('/growth-milestones-tracking')}
+            onPress={() => router.push('/milestone-tracker')}
           >
             <View style={styles.navigationContent}>
               <MaterialCommunityIcons name="star-circle-outline" size={24} color="#FF9500" />
@@ -65,7 +65,7 @@ export default function GrowthTracker() {
 
           <TouchableOpacity 
             style={styles.navigationButton}
-            onPress={() => router.push('/milestone-tracker')}
+            onPress={() => router.push('/growth-milestones-tracking')}
           >
             <View style={styles.navigationContent}>
               <MaterialCommunityIcons name="chart-line" size={24} color="#4CAF50" />

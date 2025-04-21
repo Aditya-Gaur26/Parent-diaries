@@ -36,11 +36,56 @@ export default function PatientDetailsScreen() {
     }
   };
 
-  const openChat = () => {
-    router.push({
-      pathname: '/doctor-chat',
-      params: { parentId: child.parentId }
-    });
+  const startChatWithParent = async (parentId, parentName) => {
+    try {
+      console.log('Starting chat with parent:', parentId, parentName);
+      const token = await AsyncStorage.getItem('authToken');
+      const userData = await AsyncStorage.getItem('userData');
+      const doctorData = userData ? JSON.parse(userData) : null;
+      
+      if (!token || !doctorData || !doctorData._id) {
+        Alert.alert('Error', 'Could not authenticate. Please login again.');
+        return;
+      }
+      
+      // Connect socket before creating chat
+      const socketService = (await import('../utils/socketService')).default;
+      await socketService.connect();
+      
+      // Create or find chat with parent
+      const chatResponse = await axios.post(`${BACKEND_URL}/api/chat/create`, {
+        userId: doctorData._id,
+        receiverId: parentId
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (chatResponse.data && chatResponse.data._id) {
+        const chatId = chatResponse.data._id;
+        
+        // Join socket room
+        socketService.joinChat(chatId);
+        
+        // Navigate to chat interface
+        router.push({
+          pathname: '/chat-room',
+          params: {
+            chatId,
+            userId: parentId,
+            userName: parentName,
+            currentUserId: doctorData._id
+          }
+        });
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (error) {
+      console.error('Error starting chat with parent:', error);
+      Alert.alert('Error', 'Unable to start chat. Please try again.');
+    }
   };
 
   if (isLoading) {
@@ -71,7 +116,9 @@ export default function PatientDetailsScreen() {
             <Text style={styles.childInfo}>Blood Group: {child.bloodGroup}</Text>
             <Text style={styles.childInfo}>Medical Conditions: {child.medicalConditions.join(', ')}</Text>
             <Text style={styles.childInfo}>Allergies: {child.allergies.join(', ')}</Text>
-            <TouchableOpacity style={styles.chatButton} onPress={openChat}>
+            <TouchableOpacity style={styles.chatButton} 
+              onPress={() => startChatWithParent(child.parentId, child.parentName)}
+            >
               <Text style={styles.chatButtonText}>Chat with Parent</Text>
             </TouchableOpacity>
           </View>
