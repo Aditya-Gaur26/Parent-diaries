@@ -154,15 +154,44 @@ export default function GrowthMilestonesTracking() {
       const response = await axios.get(`${BACKEND_URL}/api/growth/child/${childId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-
+      console.log("Milestones API response:", response.data);
       if (response.data.data) {
         const savedMilestones: Record<string, boolean> = {};
+        
+        // Initialize all milestones as false first
+        ageGroups.forEach(ageGroup => {
+          Object.entries(milestoneData[ageGroup]).forEach(([category, milestones]) => {
+            milestones.forEach(milestone => {
+              const key = `${ageGroup}-${category}-${milestone}`;
+              savedMilestones[key] = false;
+            });
+          });
+        });
+
+        // Update with completed milestones from the response
         response.data.data.forEach((entry: any) => {
           entry.entries.forEach((milestone: any) => {
-            const key = `${entry.ageInMonths}-${milestone.type}-${milestone.detail}`;
+            // Find the corresponding age group based on ageInMonths
+            const ageGroup = ageGroups.find(group => {
+              const ageMap: Record<string, number> = {
+                '0-3 months': 3,
+                '4-6 months': 6,
+                '7-9 months': 9,
+                '10-12 months': 12,
+                '1-2 years': 24,
+                '2-3 years': 36,
+                '3-4 years': 48,
+                '4-5 years': 60
+              };
+              return ageMap[group] >= entry.ageInMonths;
+            }) || '0-3 months';
+
+            const key = `${ageGroup}-${milestone.type}-${milestone.detail}`;
             savedMilestones[key] = milestone.completed;
           });
         });
+
+        console.log("Processed milestones:", savedMilestones);
         setCompletedMilestones(savedMilestones);
       }
     } catch (error) {
@@ -259,13 +288,21 @@ export default function GrowthMilestonesTracking() {
             keyExtractor={(item) => item._id}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={styles.childItem}
+                style={[
+                  styles.childItem,
+                  selectedChild?._id === item._id && styles.selectedChildItem
+                ]}
                 onPress={() => {
                   setSelectedChild(item);
+                  setSelectedChildId(item._id); // This triggers the useEffect
                   setShowChildPicker(false);
+                  setCompletedMilestones({}); // Clear previous milestones
                 }}
               >
                 <Text style={styles.childName}>{item.name}</Text>
+                {selectedChild?._id === item._id && (
+                  <Ionicons name="checkmark" size={20} color="#4A90E2" />
+                )}
               </TouchableOpacity>
             )}
           />
@@ -518,5 +555,8 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '500',
+  },
+  selectedChildItem: {
+    backgroundColor: '#f0f7ff',
   },
 });
