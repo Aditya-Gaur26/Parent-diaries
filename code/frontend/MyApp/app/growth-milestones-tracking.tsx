@@ -510,28 +510,15 @@ function getAllMilestonesForAgeGroup(ageGroup: string): Record<string, string[]>
 
         // Update with completed milestones from the response
         response.data.data.forEach((entry: any) => {
-          entry.entries.forEach((milestone: any) => {
-            // Find the corresponding age group based on ageInMonths
-            const ageGroup = ageGroups.find(group => {
-              const ageMap: Record<string, number> = {
-                '2 months': 2,
-                '4 months': 4,
-                '6 months': 6,
-                '9 months': 9,
-                '12 months': 12,
-                '15 months': 15,
-                '18 months': 18,
-                '24 months': 24,
-                '30 months': 30,
-                '36 months': 36,
-                '48 months': 48,
-                '60 months': 60
-              };
-              return ageMap[group] >= entry.ageInMonths;
-            }) || '2 months';
+          const ageGroup = Object.keys(ageGroupToMonthsMap).find(
+            group => ageGroupToMonthsMap[group][0] === entry.ageInMonths
+          ) || '2 months';
 
-            const key = `${ageGroup}-${milestone.type}-${milestone.detail}`;
-            savedMilestones[key] = milestone.completed;
+          entry.entries.forEach((categoryEntry: any) => {
+            categoryEntry.details.forEach((detail: any) => {
+              const key = `${ageGroup}-${categoryEntry.type}-${detail.detail}`;
+              savedMilestones[key] = detail.completed;
+            });
           });
         });
 
