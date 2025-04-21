@@ -707,9 +707,6 @@ export default function ChatRoomScreen() {
             <Text style={styles.userStatus}>Online</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.moreButton}>
-          <Ionicons name="ellipsis-vertical" size={24} color="black" />
-        </TouchableOpacity>
       </View>
       {isLoading ? (
         <View style={styles.loadingContainer}>
@@ -843,6 +840,8 @@ const styles = StyleSheet.create({
   profileContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1, // Added to take up remaining space
+    marginLeft: 12, // Added to create space after back button
   },
   avatar: {
     width: 40,
@@ -858,9 +857,6 @@ const styles = StyleSheet.create({
   userStatus: {
     fontSize: 12,
     color: '#4CAF50',
-  },
-  moreButton: {
-    padding: 4,
   },
   loadingContainer: {
     flex: 1,

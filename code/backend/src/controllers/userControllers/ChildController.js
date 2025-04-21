@@ -69,38 +69,53 @@ export const getChildren = async (req, res) => {
 export const updateChild = async (req, res) => {
   try {
     const childId = req.params.childId;
-    const { name, dateOfBirth, gender, bloodGroup, medicalConditions, allergies } = req.body;
+    const { 
+      name, dateOfBirth, gender, bloodGroup, 
+      medicalConditions, allergies, assignedDoctors 
+    } = req.body;
 
-    // Find user by ID (from auth middleware)
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Find the child to update by ID
     const childIndex = user.children.findIndex(child => child._id.toString() === childId);
     if (childIndex === -1) {
       return res.status(404).json({ message: 'Child not found' });
     }
 
-    // Update child details if provided
+    // Update basic fields
     if (name) user.children[childIndex].name = name;
     if (dateOfBirth) user.children[childIndex].dateOfBirth = new Date(dateOfBirth);
     if (gender) user.children[childIndex].gender = gender;
     if (bloodGroup) user.children[childIndex].bloodGroup = bloodGroup;
     if (medicalConditions) user.children[childIndex].medicalConditions = medicalConditions;
     if (allergies) user.children[childIndex].allergies = allergies;
+    
+    // Update assigned doctors if provided
+    if (assignedDoctors) {
+      // Verify all doctors exist and are approved
+      const doctorsExist = await User.find({
+        _id: { $in: assignedDoctors },
+        role: 'doctor',
+        isApproved: true
+      });
+
+      if (doctorsExist.length !== assignedDoctors.length) {
+        return res.status(400).json({ message: 'One or more selected doctors are invalid' });
+      }
+
+      user.children[childIndex].assignedDoctors = assignedDoctors;
+    }
 
     await user.save();
 
-    // Return success response with the updated child
     return res.status(200).json({
       message: 'Child updated successfully',
       child: user.children[childIndex]
     });
-
   } catch (error) {
-    console.error('Error updating child information:', error); // Log the error for debugging
+    console.error('Error updating child information:', error);
     return res.status(500).json({ message: 'Error updating child information' });
   }
 };
@@ -134,5 +149,20 @@ export const removeChild = async (req, res) => {
   } catch (error) {
     console.error('Error removing child from profile:', error); // Log the error for debugging
     return res.status(500).json({ message: 'Error removing child from profile' });
+  }
+};
+
+// Add new endpoint to get available doctors
+export const getAvailableDoctors = async (req, res) => {
+  try {
+    const doctors = await User.find({
+      role: 'doctor',
+      isApproved: true
+    }).select('name specialization hospitalAffiliation');
+
+    res.status(200).json({ doctors });
+  } catch (error) {
+    console.error('Error fetching available doctors:', error);
+    return res.status(500).json({ message: 'Error fetching available doctors' });
   }
 };

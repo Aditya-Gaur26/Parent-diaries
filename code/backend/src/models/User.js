@@ -27,6 +27,10 @@ const ChildSchema = new mongoose.Schema({
   }],
   allergies: [{
     type: String
+  }],
+  assignedDoctors: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }]
 }, { _id: true }); // Ensure each child gets an _id
 

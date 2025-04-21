@@ -6,6 +6,7 @@ import { addChild, getChildren, updateChild, removeChild } from '../controllers/
 import { getSubscription, updateSubscription } from '../controllers/userControllers/SubscriptionController.js';
 import { reportIssue } from '../controllers/userControllers/ReportController.js';
 import { getUserMilestones, getChildMilestones } from '../controllers/milestone.js';
+import { getAvailableDoctors } from '../controllers/Doctor.js';
 
 const router = express.Router();
 
@@ -64,5 +65,8 @@ router.get('/children/:childId/milestones', authenticate_jwt, async (req, res) =
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
+// Doctor Routes
+router.get('/available-doctors', authenticate_jwt, getAvailableDoctors);
 
 export default router;
