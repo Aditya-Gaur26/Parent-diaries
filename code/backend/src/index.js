@@ -23,8 +23,9 @@ import doctorRoutes from "./routes/Doctor.js";      // Doctor profiles, appointm
 import adminRoutes from "./routes/Admin.js";        // Administrative controls and system management
 import chatRoutes from './routes/chat.js';          // Real-time chat functionality and message handling
 import forumRoutes from './routes/forum.js';        // Community discussions, posts, and comment management
+import growthRoutes from './routes/growth.js';        // Personal growth and development resources and tracking
 import { startSchedulers } from "./services/scheduler.js";
-import { start } from "repl";
+
 const app = express();
 
 // Create HTTP server
@@ -63,6 +64,7 @@ app.use('/api/doctors', doctorRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/chat', chatRoutes)
 app.use('/api/forum', forumRoutes);
+app.use('/api/growth', growthRoutes);
 
 // Make socket.io instance available to routes
 app.set('io', io);
