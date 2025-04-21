@@ -2,7 +2,7 @@ import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import { ChatModel } from '../models/chat.js';
+import { ChatModel } from '../models/Chat.js';
 import User from '../models/User.js';
 
 dotenv.config();
