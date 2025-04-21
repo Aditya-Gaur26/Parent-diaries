@@ -112,8 +112,8 @@ export const getGrowthByChild = async (req, res) => {
   }
 };
 
-// GET /growth/doctor-view/:childId
-export const getGrowthSummaryForDoctor = async (req, res) => {
+// GET /api/growth/child/:childId/medical-report
+export const getMedicalReport = async (req, res) => {
   try {
     const { childId } = req.params;
 
@@ -121,27 +121,39 @@ export const getGrowthSummaryForDoctor = async (req, res) => {
       return res.status(400).json({ message: 'Child ID is required' });
     }
 
-    const growthData = await Growth.find({ childId }).select(
-      'ageInMonths entries.type entries.detail entries.completed'
-    ).sort({ ageInMonths: 1 });
+    const growthData = await Growth.find({ childId }).sort({ ageInMonths: 1 });
 
     if (!growthData.length) {
-      return res.status(404).json({ message: 'No growth data found for the specified child' });
+      return res.status(404).json({ message: 'No growth data found' });
     }
 
-    // Optional: summarize progress by category
-    const summary = growthData.map(entry => ({
-      ageInMonths: entry.ageInMonths,
-      progress: entry.entries.map(e => ({
-        type: e.type,
-        detail: e.detail,
-        completed: e.completed
+    const medicalReport = {
+      assessmentDates: {
+        first: growthData[0].createdAt,
+        latest: growthData[growthData.length - 1].createdAt
+      },
+      developmentSummary: growthData.map(record => ({
+        ageInMonths: record.ageInMonths,
+        date: record.createdAt,
+        milestones: record.entries.map(entry => ({
+          category: entry.type,
+          totalMilestones: entry.details.length,
+          completedMilestones: entry.details.filter(d => d.completed).length,
+          completionRate: (entry.details.filter(d => d.completed).length / entry.details.length * 100).toFixed(1),
+          recentAchievements: entry.details
+            .filter(d => d.completed && d.dateCompleted)
+            .map(d => ({
+              milestone: d.detail,
+              achievedOn: d.dateCompleted
+            }))
+        }))
       }))
-    }));
+    };
 
-    return res.status(200).json({ summary });
+    return res.status(200).json({ data: medicalReport });
   } catch (error) {
-    console.error('Doctor view error:', error);
+    console.error('Error generating medical report:', error);
     return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
