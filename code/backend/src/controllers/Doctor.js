@@ -1,5 +1,4 @@
 import User from '../models/User.js';
-import jwt from 'jsonwebtoken';
 
 /**
  * Authenticate doctor and generate JWT token
@@ -123,28 +122,28 @@ export const updateDoctorProfile = async (req, res) => {
  */
 export const getPatients = async (req, res) => {
   try {
-    // Get all users with children
     const users = await User.find({ 
       role: 'user', 
-      'children.0': { $exists: true } 
-    }).select('name email _id children'); 
+      'children.0': { $exists: true },
+      'children.assignedDoctors': req.user._id 
+    }).select('name email _id children');
     
-    // Extract and flatten all children into a single array with parent information
     const patients = [];
     
     users.forEach(user => {
       if (user.children && user.children.length > 0) {
         user.children.forEach(child => {
-          // Add parent information to each child record
-          patients.push({
-            ...child.toObject(),
-            parentId: user._id,
-            parentInfo: {
-              _id: user._id,
-              name: user.name,
-              email: user.email
-            }
-          });
+          if (child.assignedDoctors.includes(req.user._id)) {
+            patients.push({
+              ...child.toObject(),
+              parentId: user._id,
+              parentInfo: {
+                _id: user._id,
+                name: user.name,
+                email: user.email
+              }
+            });
+          }
         });
       }
     });
@@ -166,26 +165,25 @@ export const getPatientDetails = async (req, res) => {
   try {
     const { patientId } = req.params;
 
-    // First, find which parent has this child
     const parent = await User.findOne({
       role: 'user',
-      'children._id': patientId
+      'children._id': patientId,
+      'children.assignedDoctors': req.user._id 
     });
 
     if (!parent) {
-      return res.status(404).json({ message: 'Patient not found' });
+      return res.status(404).json({ message: 'Patient not found or not authorized' });
     }
 
-    // Find the specific child object within the parent's children array
     const child = parent.children.find(
-      child => child._id.toString() === patientId
+      child => child._id.toString() === patientId && 
+      child.assignedDoctors.includes(req.user._id)
     );
 
     if (!child) {
-      return res.status(404).json({ message: 'Patient not found' });
+      return res.status(404).json({ message: 'Patient not found or not authorized' });
     }
 
-    // Add parent information to the response
     const childWithParentInfo = {
       ...child.toObject(),
       parentId: parent._id,
@@ -218,5 +216,39 @@ export const getAllDoctors = async (req, res) => {
   } catch (error) {
     console.error('Error fetching doctors:', error);
     res.status(500).json({ message: 'Error fetching doctors', error: error.message });
+  }
+};
+
+/**
+ * Get all available and approved doctors
+ * @route GET /api/users/available-doctors
+ * @access Private
+ */
+export const getAvailableDoctors = async (req, res) => {
+  try {
+    const doctors = await User.find({
+      role: 'doctor',
+      isApproved: true,
+      isVerified: true
+    })
+    .select('name specialization hospitalAffiliation qualification')
+    .sort({ name: 1 });
+    
+    // Transform the data to include only necessary information
+    const formattedDoctors = doctors.map(doc => ({
+      _id: doc._id,
+      name: doc.name,
+      specialization: doc.specialization,
+      hospitalAffiliation: doc.hospitalAffiliation || '',
+      qualification: doc.qualification || ''
+    }));
+    
+    res.status(200).json({ doctors: formattedDoctors });
+  } catch (error) {
+    console.error('Error fetching available doctors:', error);
+    res.status(500).json({ 
+      message: 'Error fetching available doctors',
+      error: error.message 
+    });
   }
 };

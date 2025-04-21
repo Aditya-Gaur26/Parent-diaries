@@ -10,6 +10,13 @@ import axios from 'axios';
 import { BACKEND_URL } from '../../config/environment';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
+interface Doctor {
+  _id: string;
+  name: string;
+  specialization: string;
+  hospitalAffiliation?: string;
+}
+
 interface Child {
   _id: string;
   name: string;
@@ -18,6 +25,7 @@ interface Child {
   bloodGroup: string | null;
   medicalConditions: string[];
   allergies: string[];
+  assignedDoctors: string[];
 }
 
 export default function ChildDetailsScreen() {
@@ -30,6 +38,7 @@ export default function ChildDetailsScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDoctorModal, setShowDoctorModal] = useState(false);
   const [child, setChild] = useState<Child | null>(null);
   const [editedChild, setEditedChild] = useState({
     name: '',
@@ -37,11 +46,15 @@ export default function ChildDetailsScreen() {
     gender: '',
     bloodGroup: '',
     medicalConditions: '',
-    allergies: ''
+    allergies: '',
+    assignedDoctors: []
   });
+  const [availableDoctors, setAvailableDoctors] = useState<Doctor[]>([]);
+  const [selectedDoctors, setSelectedDoctors] = useState<string[]>([]);
 
   useEffect(() => {
     fetchChildDetails();
+    fetchAvailableDoctors();
   }, [childId]);
 
   const fetchChildDetails = async () => {
@@ -65,14 +78,28 @@ export default function ChildDetailsScreen() {
           gender: foundChild.gender,
           bloodGroup: foundChild.bloodGroup || '',
           medicalConditions: foundChild.medicalConditions.join(', '),
-          allergies: foundChild.allergies.join(', ')
+          allergies: foundChild.allergies.join(', '),
+          assignedDoctors: foundChild.assignedDoctors || []
         });
+        setSelectedDoctors(foundChild.assignedDoctors || []);
       }
     } catch (error) {
       console.error('Error:', error);
       Alert.alert('Error', 'Failed to fetch child details');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchAvailableDoctors = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await axios.get(`${BACKEND_URL}/api/users/available-doctors`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAvailableDoctors(response.data.doctors);
+    } catch (error) {
+      console.error('Error fetching doctors:', error);
     }
   };
 
@@ -94,7 +121,8 @@ export default function ChildDetailsScreen() {
           gender: editedChild.gender,
           bloodGroup: editedChild.bloodGroup || null,
           medicalConditions: editedChild.medicalConditions.split(',').map(s => s.trim()).filter(Boolean),
-          allergies: editedChild.allergies.split(',').map(s => s.trim()).filter(Boolean)
+          allergies: editedChild.allergies.split(',').map(s => s.trim()).filter(Boolean),
+          assignedDoctors: selectedDoctors
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -125,6 +153,93 @@ export default function ChildDetailsScreen() {
       Alert.alert('Error', 'Failed to delete child');
     }
   };
+
+  const renderDoctorsSection = () => (
+    <View style={styles.detailItem}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.detailLabel}>Assigned Doctors</Text>
+        <TouchableOpacity 
+          style={styles.editDoctorsButton}
+          onPress={() => setShowDoctorModal(true)}
+        >
+          <Text style={styles.editDoctorsButtonText}>Manage</Text>
+        </TouchableOpacity>
+      </View>
+      {child?.assignedDoctors?.length ? (
+        availableDoctors
+          .filter(doc => child.assignedDoctors.includes(doc._id))
+          .map(doctor => (
+            <View key={doctor._id} style={styles.doctorItem}>
+              <Text style={styles.doctorName}>{doctor.name}</Text>
+              <Text style={styles.doctorSpecialization}>{doctor.specialization}</Text>
+            </View>
+          ))
+      ) : (
+        <Text style={styles.emptyText}>No doctors assigned</Text>
+      )}
+    </View>
+  );
+
+  const renderDoctorSelectionModal = () => (
+    <Modal
+      visible={showDoctorModal}
+      transparent
+      animationType="slide"
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Select Doctors</Text>
+          <ScrollView>
+            {availableDoctors.map(doctor => (
+              <TouchableOpacity
+                key={doctor._id}
+                style={[
+                  styles.doctorSelectItem,
+                  selectedDoctors.includes(doctor._id) && styles.doctorSelectItemSelected
+                ]}
+                onPress={() => {
+                  setSelectedDoctors(prev => 
+                    prev.includes(doctor._id)
+                      ? prev.filter(id => id !== doctor._id)
+                      : [...prev, doctor._id]
+                  );
+                }}
+              >
+                <View style={styles.doctorSelectInfo}>
+                  <Text style={styles.doctorSelectName}>{doctor.name}</Text>
+                  <Text style={styles.doctorSelectSpecialization}>
+                    {doctor.specialization}
+                  </Text>
+                </View>
+                <Ionicons
+                  name={selectedDoctors.includes(doctor._id) ? "checkmark-circle" : "ellipse-outline"}
+                  size={24}
+                  color={selectedDoctors.includes(doctor._id) ? "#4A90E2" : "#666"}
+                />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <View style={styles.modalButtons}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.cancelButton]}
+              onPress={() => setShowDoctorModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.saveButton]}
+              onPress={() => {
+                handleSave();
+                setShowDoctorModal(false);
+              }}
+            >
+              <Text style={styles.saveButtonText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 
   if (isLoading) {
     return (
@@ -274,6 +389,9 @@ export default function ChildDetailsScreen() {
                 {child?.allergies?.length ? child.allergies.join(', ') : 'None'}
               </Text>
             </View>
+
+            {renderDoctorsSection()}
+            {renderDoctorSelectionModal()}
           </View>
         )}
       </ScrollView>
@@ -456,5 +574,66 @@ const styles = StyleSheet.create({
   },
   confirmButtonText: {
     color: 'white',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  editDoctorsButton: {
+    backgroundColor: '#4A90E2',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  editDoctorsButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  doctorItem: {
+    backgroundColor: '#f5f5f5',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  doctorName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  doctorSpecialization: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  doctorSelectItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  doctorSelectItemSelected: {
+    backgroundColor: '#f0f7ff',
+  },
+  doctorSelectInfo: {
+    flex: 1,
+  },
+  doctorSelectName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  doctorSelectSpecialization: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  emptyText: {
+    color: '#666',
+    fontStyle: 'italic',
   },
 });
