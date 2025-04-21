@@ -95,6 +95,13 @@ export default function PatientDetailsScreen() {
     });
   };
 
+  const openVaccinationChart = () => {
+    router.push({
+      pathname: '/patient-vaccine',
+      params: { childId: patientId }
+    });
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.loaderContainer}>
@@ -130,6 +137,9 @@ export default function PatientDetailsScreen() {
             </TouchableOpacity>
             <TouchableOpacity style={styles.chatButton} onPress={openMilestoneChart}>
               <Text style={styles.chatButtonText}>Get Patient Milestone Chart</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.chatButton} onPress={openVaccinationChart}>
+              <Text style={styles.chatButtonText}>View Vaccination Chart</Text>
             </TouchableOpacity>
 
             {medicalReport && (

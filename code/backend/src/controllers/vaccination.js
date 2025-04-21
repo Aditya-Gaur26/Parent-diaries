@@ -191,6 +191,45 @@ export const getChildVaccinations = async (req, res) => {
 };
 
 /**
+ * @route   GET /api/vaccination/records/:childId
+ * @desc    Get all vaccination records and schedule for a child using childId
+ * @access  Public
+ * @details Retrieves complete vaccination history and upcoming schedule for a specific child without auth
+ */
+export const getChildVaccinationsByChildId = async (req, res) => {
+  try {
+    const childId = req.params.childId;
+    
+    // Retrieve and format vaccination data
+    const vaccinations = await Vaccination.find({ 
+      childId: childId 
+    }).sort({ expectedDate: 1 });
+
+    // Get child's information
+    const user = await User.findOne({ 'children._id': childId });
+    if (!user) {
+      return res.status(404).json({ msg: 'Child not found' });
+    }
+    const child = user.children.find(child => child._id.toString() === childId);
+
+    // Generate complete vaccination schedule including actual dates
+    const vaccinationChart = generateVaccinationChart(child.dateOfBirth, vaccinations.map(v => ({
+      disease: v.disease,
+      doseType: v.doseType,
+      actualDate: v.actualDate
+    })));
+    
+    res.json({
+      actualRecords: vaccinations,
+      completeSchedule: vaccinationChart
+    });
+  } catch (err) {
+    console.error('Error fetching vaccination records:', err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
+/**
  * @route   GET /api/vaccination/metadata
  * @desc    Get list of diseases and dose types
  * @access  Private
