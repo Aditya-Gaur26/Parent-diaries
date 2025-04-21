@@ -586,6 +586,15 @@ function getAllMilestonesForAgeGroup(ageGroup: string): Record<string, string[]>
       const milestoneKey = `${activeAgeGroup}-${category}-${milestone}`;
       const newState = !completedMilestones[milestoneKey];
 
+      console.log('Attempting to update milestone:', {
+        childId: selectedChild._id,
+        ageGroup: activeAgeGroup,
+        ageInMonths: ageMap[activeAgeGroup],
+        category,
+        milestone,
+        newState
+      });
+
       const response = await axios.post(
         `${BACKEND_URL}/api/growth`,
         {
@@ -593,9 +602,11 @@ function getAllMilestonesForAgeGroup(ageGroup: string): Record<string, string[]>
           ageInMonths: ageMap[activeAgeGroup],
           entries: [{
             type: category,
-            detail: milestone,
-            completed: newState,
-            dateCompleted: newState ? new Date().toISOString() : null
+            details: [{
+              detail: milestone,
+              completed: newState,
+              dateCompleted: newState ? new Date().toISOString() : undefined
+            }]
           }]
         },
         {

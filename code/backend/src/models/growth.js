@@ -304,17 +304,19 @@ const DevelopmentEntrySchema = new Schema({
     enum: ['Social', 'Language', 'Cognitive', 'Motor'],
     required: true,
   },
-  detail: {
-    type: String,
-    required: true,
-  },
-  completed: {
-    type: Boolean,
-    default: false,
-  },
-  dateCompleted: {
-    type: Date,
-  }
+  details: [{
+    detail: {
+      type: String,
+      required: true,
+    },
+    completed: {
+      type: Boolean,
+      default: false,
+    },
+    dateCompleted: {
+      type: Date,
+    }
+  }]
 }, { _id: false });
 
 const GrowthSchema = new Schema({
@@ -342,12 +344,18 @@ GrowthSchema.pre('validate', function (next) {
 
   for (const entry of this.entries) {
     const validDetails = ageMap[entry.type];
-    if (!validDetails || !validDetails.includes(entry.detail)) {
-      return next(
-        new Error(
-          `Invalid detail "${entry.detail}" for type "${entry.type}" at age ${this.ageInMonths} months`
-        )
-      );
+    if (!validDetails) {
+      return next(new Error(`Invalid type "${entry.type}" at age ${this.ageInMonths} months`));
+    }
+
+    for (const detailObj of entry.details) {
+      if (!validDetails.includes(detailObj.detail)) {
+        return next(
+          new Error(
+            `Invalid detail "${detailObj.detail}" for type "${entry.type}" at age ${this.ageInMonths} months`
+          )
+        );
+      }
     }
   }
 

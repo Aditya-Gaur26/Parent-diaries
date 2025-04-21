@@ -10,21 +10,73 @@ export const updateGrowth = async (req, res) => {
       return res.status(400).json({ message: 'Missing or invalid fields' });
     }
 
+    // Validate entry structure
+    const isValidEntryStructure = entries.every(entry => 
+      entry.type && 
+      Array.isArray(entry.details) && 
+      entry.details.every(detail => 
+        typeof detail.detail === 'string' && 
+        typeof detail.completed !== 'undefined'
+      )
+    );
+
+    if (!isValidEntryStructure) {
+      return res.status(400).json({ 
+        message: 'Invalid entry structure. Each entry must have type and details array.' 
+      });
+    }
+
     // Try to find an existing growth document for the same child and age
     let growth = await Growth.findOne({ childId, ageInMonths });
 
     if (growth) {
-      growth.entries = entries;
+      // Merge entries by type
+      entries.forEach(newEntry => {
+        const existingEntry = growth.entries.find(e => e.type === newEntry.type);
+        if (existingEntry) {
+          // Merge details arrays, avoiding duplicates by detail text
+          newEntry.details.forEach(newDetail => {
+            const existingDetail = existingEntry.details.find(d => d.detail === newDetail.detail);
+            if (existingDetail) {
+              existingDetail.completed = newDetail.completed;
+              if (newDetail.completed) {
+                existingDetail.dateCompleted = new Date();
+              }
+            } else {
+              existingEntry.details.push({
+                ...newDetail,
+                dateCompleted: newDetail.completed ? new Date() : undefined
+              });
+            }
+          });
+        } else {
+          growth.entries.push({
+            ...newEntry,
+            details: newEntry.details.map(detail => ({
+              ...detail,
+              dateCompleted: detail.completed ? new Date() : undefined
+            }))
+          });
+        }
+      });
     } else {
+      // For new documents, set dateCompleted for completed items
+      const processedEntries = entries.map(entry => ({
+        ...entry,
+        details: entry.details.map(detail => ({
+          ...detail,
+          dateCompleted: detail.completed ? new Date() : undefined
+        }))
+      }));
+
       growth = new Growth({
         childId,
         ageInMonths,
-        entries
+        entries: processedEntries
       });
     }
 
     await growth.save();
-
     return res.status(200).json({ message: 'Growth data saved successfully', data: growth });
   } catch (error) {
     console.error('Error saving growth data:', error);
