@@ -1,4 +1,4 @@
-import { ChatModel } from "../models/chat.js";
+import { ChatModel } from "../models/Chat.js";
 import mongoose from "mongoose";
 
 /**
