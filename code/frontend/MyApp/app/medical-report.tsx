@@ -96,37 +96,46 @@ export default function MedicalReportScreen() {
       </View>
       
       <ScrollView style={styles.scrollContainer}>
-        {growthData && growthData.length > 0 && (
+        {(!growthData || growthData.length === 0) ? (
+          <View style={styles.noDataContainer}>
+            <Text style={styles.noDataText}>No milestone data available yet.</Text>
+            <Text style={styles.noDataSubText}>Complete an assessment to see the report.</Text>
+          </View>
+        ) : (
           <View style={styles.reportContainer}>
-            {growthData
-              .sort((a, b) => a.ageInMonths - b.ageInMonths)
-              .map((assessment) => (
-                <View key={assessment._id} style={styles.section}>
-                  <Text style={styles.sectionTitle}>
-                    {assessment.ageInMonths} Month Assessment
-                  </Text>
-                  <Text style={styles.dateText}>
-                    Date: {new Date(assessment.createdAt).toLocaleDateString()}
-                  </Text>
+            {growthData && growthData.length > 0 && (
+              <View style={styles.reportContainer}>
+                {growthData
+                  .sort((a, b) => a.ageInMonths - b.ageInMonths)
+                  .map((assessment) => (
+                    <View key={assessment._id} style={styles.section}>
+                      <Text style={styles.sectionTitle}>
+                        {assessment.ageInMonths} Month Assessment
+                      </Text>
+                      <Text style={styles.dateText}>
+                        Date: {new Date(assessment.createdAt).toLocaleDateString()}
+                      </Text>
 
-                  {assessment.entries.map((entry) => {
-                    const { completed, total } = getProgressStats(entry);
-                    return (
-                      <View key={entry.type} style={styles.categoryContainer}>
-                        <Text style={styles.categoryTitle}>{entry.type}</Text>
-                        <Text style={styles.progressText}>
-                          Completed: {completed}/{total}
-                          ({Math.round((completed / total) * 100)}%)
-                        </Text>
-                        
-                        <View style={styles.achievementsContainer}>
-                          {renderDetails(entry)}
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              ))}
+                      {assessment.entries.map((entry) => {
+                        const { completed, total } = getProgressStats(entry);
+                        return (
+                          <View key={entry.type} style={styles.categoryContainer}>
+                            <Text style={styles.categoryTitle}>{entry.type}</Text>
+                            <Text style={styles.progressText}>
+                              Completed: {completed}/{total}
+                              ({Math.round((completed / total) * 100)}%)
+                            </Text>
+                            
+                            <View style={styles.achievementsContainer}>
+                              {renderDetails(entry)}
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ))}
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -230,5 +239,25 @@ const styles = StyleSheet.create({
     color: '#666',
     fontStyle: 'italic',
     marginTop: 5,
+  },
+  noDataContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  noDataText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  noDataSubText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
   },
 });

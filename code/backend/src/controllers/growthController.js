@@ -101,14 +101,12 @@ export const getGrowthByChild = async (req, res) => {
 
     const growthData = await Growth.find(query).sort({ ageInMonths: 1 });
 
-    if (!growthData.length) {
-      return res.status(404).json({ message: 'No growth data found for the specified child' });
-    }
-
-    return res.status(200).json({ data: growthData });
+    // Return empty array instead of 404 error when no data is found
+    return res.status(200).json({ data: growthData || [] });
   } catch (error) {
     console.error('Error fetching growth data:', error);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    // Return empty array on error instead of error message
+    return res.status(200).json({ data: [] });
   }
 };
 
